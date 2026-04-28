@@ -1,0 +1,287 @@
+import React, { useState, useRef, useEffect } from "react";
+import "./App.css";
+
+function App() {
+  const [message, setMessage] = useState("");
+  const [chat, setChat] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [darkMode, setDarkMode] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  const chatEndRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  const suggestions = [
+    "Summarize this project",
+    "Explain architecture",
+    "Key insights?",
+    "Generate report"
+  ];
+
+  // ✅ EXPORT CHAT FUNCTION
+  const exportChat = () => {
+    if (chat.length === 0) {
+      alert("No chat to export");
+      return;
+    }
+
+    const formatted = chat.map((c) => {
+      const time = c.time
+        ? new Date(c.time).toLocaleString()
+        : "";
+
+      const sender = c.role === "user" ? "You" : "SwooshAI";
+
+      return `[${time}] ${sender}: ${c.text}`;
+    }).join("\n\n");
+
+    const blob = new Blob([formatted], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "chat-export.txt";
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  // Dark mode
+  useEffect(() => {
+    document.body.className = darkMode ? "dark-mode" : "";
+  }, [darkMode]);
+
+  // Auto scroll
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end"
+    });
+  }, [chat]);
+
+  // Auto expand textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height =
+        textareaRef.current.scrollHeight + "px";
+    }
+  }, [message]);
+
+  // Close dropdown
+  useEffect(() => {
+    const closeMenu = () => setShowMenu(false);
+    window.addEventListener("click", closeMenu);
+    return () => window.removeEventListener("click", closeMenu);
+  }, []);
+
+  const newChat = () => {
+    if (chat.length > 0) {
+      setHistory((prev) => [
+        { title: chat[0]?.text?.slice(0, 25) || "Chat", data: chat },
+        ...prev
+      ]);
+    }
+    setChat([]);
+  };
+
+  const loadChat = (item) => setChat(item.data);
+
+  const sendMessage = async () => {
+    if (!message.trim() || loading) return;
+
+    const userText = message;
+    setMessage("");
+
+    setChat((prev) => [
+      ...prev,
+      { role: "user", text: userText, time: new Date() }
+    ]);
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userText })
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+
+      let botText = "";
+
+      setChat((prev) => [
+        ...prev,
+        { role: "bot", text: "", time: new Date() }
+      ]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        botText += chunk;
+
+        setChat((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1].text = botText;
+          return updated;
+        });
+      }
+
+    } catch (err) {
+      setChat((prev) => [
+        ...prev,
+        { role: "bot", text: "⚠️ Error connecting to server." }
+      ]);
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <div className="app">
+
+      {/* Sidebar */}
+      <div className="sidebar">
+        <h2 className="brand-gradient">SwooshAI</h2>
+        <span className="tag">JustAsk</span>
+
+        <button className="new-chat" onClick={newChat}>
+          + New Chat
+        </button>
+
+        <div className="recent">
+          {history.map((item, i) => (
+            <div key={i} className="chat-item" onClick={() => loadChat(item)}>
+              {item.title}
+            </div>
+          ))}
+        </div>
+
+        {/* USER PROFILE */}
+        <div
+          className="user-info"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowMenu(!showMenu);
+          }}
+        >
+          <div className="user-avatar">👤</div>
+          <div>
+            <div className="user-name">John Doe</div>
+            <div className="user-role">Admin</div>
+          </div>
+
+          {showMenu && (
+            <div className="user-menu">
+              <div className="menu-item">Profile</div>
+              <div className="menu-item">Settings</div>
+
+              {/* ✅ ADDED EXPORT */}
+              <div className="menu-item" onClick={exportChat}>
+                Export Chat
+              </div>
+
+              <div className="menu-item logout">Logout</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main */}
+      <div className="main">
+
+        {/* Topbar */}
+        <div className="topbar">
+          <img src="/nike.png" className="logo nike-logo" />
+          <h3 className="title">Your assistant</h3>
+
+          <div className="top-right">
+            <img src="/quadrant.png" className="logo quadrant-logo" />
+
+            {/* Toggle */}
+            <div className="theme-toggle">
+              <input
+                type="checkbox"
+                id="darkModeToggle"
+                checked={darkMode}
+                onChange={() => setDarkMode(!darkMode)}
+              />
+              <label htmlFor="darkModeToggle" className="toggle-label">
+                <span className="toggle-ball"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Chat */}
+        <div className="chat-area">
+          {chat.map((c, i) => (
+            <div key={i} className={`msg ${c.role}`}>
+              <div className="bubble">
+                <div className="meta">
+                  {c.role === "user" ? "You" : "SwooshAI"} •{" "}
+                  {new Date(c.time).toLocaleTimeString()}
+                </div>
+                {c.text}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="msg bot">
+              <div className="bubble typing">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          )}
+
+          <div ref={chatEndRef}></div>
+        </div>
+
+        {/* Suggestions */}
+        <div className="suggestions">
+          {suggestions.map((text, i) => (
+            <div
+              key={i}
+              className="suggestion"
+              onClick={() => setMessage(text)}
+            >
+              {text}
+            </div>
+          ))}
+        </div>
+
+        {/* Input */}
+        <div className="input-box">
+          <div className="input-box-inner">
+            <button className="audio-btn">🎤</button>
+
+            <textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Message SwooshAI..."
+              disabled={loading}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
+            />
+
+            <button onClick={sendMessage}>➤</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+export default App;

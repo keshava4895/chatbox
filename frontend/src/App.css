@@ -1,0 +1,845 @@
+/* ===================== */
+/* GLOBAL - NIKE STYLE */
+/* ===================== */
+body {
+  margin: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background: #ffffff;
+  color: #111111;
+  line-height: 1.5;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+  background: #ffffff;
+}
+
+/* ===================== */
+/* SIDEBAR - NIKE BLACK */
+/* ===================== */
+.sidebar {
+  width: 280px;
+  background: #000000;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  box-shadow: 2px 0 20px rgba(0,0,0,0.1);
+}
+
+/* Brand */
+.brand-logo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.brand-logo::before {
+  content: "";
+  position: absolute;
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.9);
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(90deg, #ffffff, #003cfff6);
+  mask: url('../public/nike-white.png') center/contain no-repeat;
+  -webkit-mask: url('../public/nike-white.png') center/contain no-repeat;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.brand-gradient {
+  position: relative;
+  z-index: 1;
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(90deg, #ffffff, #7C3AED);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.tag {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-bottom: 32px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Button */
+.new-chat {
+  width: 100%; 
+  padding: 4px 8px;
+  border: 2px solid #7C3AED;
+  border-radius: 12px;
+  background: transparent;
+  color: #7C3AED;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 14px;
+}
+
+.new-chat:hover {
+  background: #7C3AED;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(124, 58, 237, 0.3);
+}
+
+/* History */
+.recent {
+  margin-top: 32px;
+}
+
+.chat-item {
+  background: rgba(255,255,255,0.05);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.chat-item:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,105,0,0.3);
+}
+
+/* ===================== */
+/* USER DROPDOWN - NIKE STYLE */
+/* ===================== */
+
+.user-menu {
+  position: absolute;
+  bottom: 70px;
+  left: 10px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  width: 160px;
+  color: #111111;
+  border: 1px solid #e5e5e5;
+}
+
+/* Menu items */
+.menu-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  color: #111111;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+/* Hover */
+.menu-item:hover {
+  background: #f8f8f8;
+}
+
+/* Logout */
+.menu-item.logout {
+  color: #c4c2c2;
+  font-weight: 500;
+}
+
+
+/* ===================== */
+/* MAIN - CLEAN WHITE */
+/* ===================== */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+/* ===================== */
+/* TOPBAR - MINIMALIST */
+/* ===================== */
+.topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #f5d7d7;
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 10px 8px rgba(0, 0, 0, 0.08);
+}
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Logos */
+.logo {
+  height: 48px;
+  object-fit: contain;
+}
+
+.nike-logo {
+  filter: none;
+}
+
+.quadrant-logo {
+  opacity: 0.8;
+}
+
+/* Title */
+.title {
+  color: #111111;
+  font-weight: 600;
+  font-size: 20px;
+  margin: 10px 0;
+}
+
+/* ===================== */
+/* CHAT AREA - CLEAN */
+/* ===================== */
+.chat-area {
+  flex: 1;
+  padding: 40px 32px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+/* Scrollbar */
+.chat-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-area::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 3px;
+}
+
+.chat-area::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+/* ===================== */
+/* MESSAGES - NIKE STYLE */
+/* ===================== */
+.msg {
+  display: flex;
+  margin-bottom: 24px;
+  animation: fadeSlide 0.4s ease forwards;
+}
+
+.msg.user {
+  justify-content: flex-end;
+}
+
+.msg.bot {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 70%;
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: #f8f8f8;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  font-size: 15px;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.msg.user .bubble {
+  background: #7C3AED;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.msg.bot .bubble {
+  background: #f8f8f8;
+  color: #111111;
+  border-bottom-left-radius: 4px;
+}
+
+/* Meta */
+.meta {
+  font-size: 12px;
+  color: #be8b8b;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+/* ===================== */
+/* INPUT - SLEEK LIGHT STYLE */
+/* ===================== */
+.input-box {
+  padding: 18px 20px;
+  background: transparent;
+  border-top: 1px solid #e8e8ef;
+}
+
+.input-box-inner {
+  display: flex;
+  align-items: center;
+
+  width: min(100%, 920px);
+  margin: 0 auto;
+
+  padding: 6px 10px 6px 12px;   /* 🔥 reduced from 14px */
+  gap: 6px;                     /* 🔥 tighter spacing */
+
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(200, 200, 220, 0.4);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.06); /* slightly lighter */
+
+  transition: all 0.25s ease;
+}
+
+.input-box-inner:focus-within {
+  border-color: rgba(124, 58, 173, 0.35);
+  box-shadow: 0 16px 40px rgba(124, 58, 173, 0.12);
+  background: #ffffff;
+}
+
+textarea {
+  flex: 1;
+  min-height: 48px;
+  max-height: 150px;
+  margin: 0;
+  padding: 14px 0 14px 0;
+  line-height: 24px;
+  resize: none;
+  overflow: hidden;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  color: #111111;
+  box-sizing: border-box;
+}
+
+textarea::placeholder {
+  color: #8b8fa3;
+}
+
+button {
+  background: #7C3AED;
+  color: white;
+  border: none;
+  border-radius: 999px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button:hover {
+  background: #6D28D9;
+  transform: translateY(-1px);
+}
+
+.audio-btn {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  min-height: 46px;
+  border-radius: 50%;
+  background: #f8f9fc;
+  color: #111111;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+}
+
+.audio-btn:hover {
+  background: #f0f4f8;
+  transform: translateY(-1px);
+}
+
+.audio-btn.recording {
+  background: #ff4d4d;
+  color: #ffffff;
+  border-color: #e11d48;
+  box-shadow: 0 8px 20px rgba(255, 77, 77, 0.25);
+}
+
+.audio-btn.send-btn {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 10px 24px rgba(124, 58, 173, 0.2);
+}
+
+.audio-btn.send-btn:hover {
+  background: linear-gradient(135deg, #6d28d9, #7c3aed);
+  transform: translateY(-2px);
+}
+
+.audio-btn.recording:hover {
+  background: #e11d48;
+}
+
+.user-avatar svg {
+  display: block;
+}
+
+
+
+/* ===================== */
+/* FLOATING SUGGESTIONS - PROFESSIONAL */
+/* ===================== */
+.suggestions {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: min(100%, 900px);
+  margin: 0 auto 18px;
+  padding: 0 16px;
+}
+
+.suggestion {
+  background: #ffffff;
+  border: 2px solid #7C3AED;
+  padding: 12px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  color: #111111;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
+}
+
+.suggestion:hover {
+  background: #7C3AED;
+  color: rgb(255, 255, 255);
+  border-color: #7C3AED;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(124, 58, 237, 0.16);
+}
+
+/* ===================== */
+/* DARK MODE - NIKE BLACK */
+/* ===================== */
+
+.dark-mode {
+  background: #000000;
+  color: #ffffff;
+}
+
+.dark-mode .suggestions {
+  background: transparent;
+}
+
+.dark-mode .suggestion {
+  background: #111827;
+  color: #f8fafc;
+  border-color: #4f46e5;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.3);
+}
+
+.dark-mode .suggestion:hover {
+  background: #4f46e5;
+  color: white;
+  border-color: #6366f1;
+}
+
+/* Sidebar */
+.dark-mode .sidebar {
+  background: #000000;
+}
+
+/* Topbar */
+.dark-mode .topbar {
+  background: #000000;
+  border-bottom: 1px solid #333333;
+}
+
+.dark-mode .main {
+  background: #000000;
+}
+
+/* Title */
+.dark-mode .title {
+  color: #ffffff;
+}
+
+/* Chat */
+.dark-mode .chat-area {
+  background: #000000;
+}
+
+/* Bot bubbles */
+.dark-mode .bubble {
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+/* User bubbles */
+.dark-mode .msg.user .bubble {
+  background: #7C3AED;
+  color: white;
+}
+
+/* Timestamp FIX */
+.dark-mode .meta {
+  color: #cccccc !important;
+}
+
+/* Input */
+.dark-mode .input-box {
+  background: #000000;
+  border-top: 1px solid #333333;
+}
+
+.dark-mode .input-box-inner {
+  background: #1a1a1a;
+  border-color: #333333;
+}
+
+.dark-mode .input-box-inner:focus-within {
+  border-color: #7C3AED;
+  background: #1a1a1a;
+}
+
+/* Textarea */
+.dark-mode textarea {
+  color: #ffffff;
+}
+
+/* Suggestions */
+.dark-mode .suggestion {
+  background: #1a1a1a;
+  color: #ffffff;
+  border-color: #333333;
+}
+
+/* Hover */
+.dark-mode .suggestion:hover {
+  background: #7C3AED;
+  border-color: #7C3AED;
+}
+
+/* User dropdown */
+.dark-mode .user-menu {
+  background: #1a1a1a;
+  color: #ffffff;
+  border-color: #333333;
+}
+
+.dark-mode .menu-item {
+  color: #ffffff;
+}
+
+.dark-mode .menu-item:hover {
+  background: #333333;
+}
+.dark-mode .nike-logo {
+  filter: brightness(0) invert(1);
+}
+
+/* ===================== */
+/* DARK MODE TOGGLE - NIKE STYLE */
+/* ===================== */
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  margin-top: 0;
+}
+
+/* Hide checkbox */
+.theme-toggle input {
+  display: none;
+}
+
+/* Toggle background */
+.toggle-label {
+  width: 52px;
+  height: 28px;
+  background: #e5e5e5;
+  border-radius: 14px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid #e5e5e5;
+}
+
+/* Ball */
+.toggle-ball {
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Move ball */
+.theme-toggle input:checked + .toggle-label .toggle-ball {
+  transform: translateX(22px);
+}
+
+/* Dark style */
+.theme-toggle input:checked + .toggle-label {
+  background: #1a1a1a;
+  border-color: #333333;
+}
+
+/* ===================== */
+/* ANIMATION */
+/* ===================== */
+@keyframes fadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bubble.typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  min-width: 90px;
+  background: rgba(255,255,255,0.94);
+}
+
+.bubble.typing span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2d6cdf;
+  opacity: 0.3;
+  animation: dotPulse 1s infinite ease-in-out;
+}
+
+.bubble.typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.bubble.typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes dotPulse {
+  0%, 80%, 100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  40% {
+    transform: scale(1.4);
+    opacity: 1;
+  }
+}
+/* ===================== */
+/* LOGIN - NIKE STYLE */
+/* ===================== */
+
+.login-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #ffffff;
+}
+
+.login-form {
+  background: #ffffff;
+  padding: 48px;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  text-align: center;
+  min-width: 320px;
+  border: 1px solid #e5e5e5;
+}
+
+.login-form h2 {
+  margin-bottom: 32px;
+  color: #111111;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.login-form input {
+  width: 100%;
+  padding: 16px;
+  margin: 12px 0;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  color: #111111;
+}
+
+.login-form input:focus {
+  border-color: #ff6900;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 105, 0, 0.1);
+}
+
+.login-form button:hover {
+  background: #e54e00;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(255, 105, 0, 0.3);
+}
+
+/* ===================== */
+/* UPLOAD POPUP */
+/* ===================== */
+
+.upload-popup {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 16px 24px;
+  background: #000000;
+  color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  font-weight: 500;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-form button {
+  width: 100%;
+  padding: 16px;
+  background: #7C3AED;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 16px;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.login-form button:hover {
+  background: #6D28D9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(255, 105, 0, 0.3);
+}
+
+/* Dark mode login */
+.dark-mode .login-container {
+  background: #000000;
+}
+
+.dark-mode .login-form {
+  background: #1a1a1a;
+  color: #ffffff;
+  border-color: #333333;
+}
+
+.dark-mode .login-form input {
+  background: #1a1a1a;
+  color: #ffffff;
+  border-color: #333333;
+}
+
+.dark-mode .login-form input:focus {
+  border-color: #7C3AED;
+}
+
+/* ===================== */
+/* USER FIX (BOTTOM ALIGN) - NIKE STYLE */
+
+.user-info {
+  margin-top: auto;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding-top: 24px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+
+  position: relative;
+  cursor: pointer;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  background: #7C3AED;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: white;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.user-role {
+  font-size: 12px;
+  opacity: 0.7;
+  color: #cccccc;
+}
+
+.nike-svg svg:hover {
+  filter: drop-shadow(0 0 20px rgba(0,198,255,0.8));
+}
+
+.upload-popup {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  background: #6c3cff;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 999;
+}

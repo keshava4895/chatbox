@@ -1,0 +1,443 @@
+/* ===================== */
+/* GLOBAL */
+/* ===================== */
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(135deg, #dbeafe, #eef3ff, #c7d2fe);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+/* ===================== */
+/* SIDEBAR */
+/* ===================== */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #0b3c91, #1e5bd8);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+/* Brand */
+.brand-gradient {
+  font-size: 26px;
+  font-weight: 700;
+  background: linear-gradient(90deg, #4f8cff, #2d6cdf, #00c6ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tag {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-bottom: 20px;
+}
+
+/* Button */
+.new-chat {
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2d6cdf, #4f8cff);
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.new-chat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(45,108,223,0.4);
+}
+
+/* History */
+.recent {
+  margin-top: 20px;
+}
+
+.chat-item {
+  background: rgba(255,255,255,0.1);
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.chat-item:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* ===================== */
+/* USER DROPDOWN FIX */
+/* ===================== */
+
+.user-menu {
+  position: absolute;
+  bottom: 70px;
+  left: 10px;
+  background: white;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+  width: 150px;
+
+  /* 🔥 FIX */
+  color: #1f2937; /* dark text */
+}
+
+/* Menu items */
+.menu-item {
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  color: #1f2937; /* ensure visible */
+}
+
+/* Hover */
+.menu-item:hover {
+  background: #f1f5f9;
+}
+
+/* Logout */
+.menu-item.logout {
+  color: red;
+}
+
+
+/* ===================== */
+/* MAIN */
+/* ===================== */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===================== */
+/* TOPBAR */
+/* ===================== */
+.topbar {
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(12px);
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.top-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Logos */
+.logo {
+  height: 60px;
+  object-fit: contain;
+}
+
+.nike-logo {
+  transform: scale(1.2);
+}
+
+.quadrant-logo {
+  transform: scale(1);
+}
+
+/* Title */
+.title {
+  color: #1e40af;
+  font-weight: 600;
+}
+
+/* ===================== */
+/* CHAT AREA */
+/* ===================== */
+.chat-area {
+  flex: 1;
+  padding: 50px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar */
+.chat-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-area::-webkit-scrollbar-thumb {
+  background: rgba(9, 9, 10, 0.4);
+  border-radius: 10px;
+}
+
+/* ===================== */
+/* MESSAGES */
+/* ===================== */
+.msg {
+  display: flex;
+  margin-bottom: 20px;
+  animation: fadeSlide 0.4s ease forwards;
+}
+
+.msg.user {
+  justify-content: flex-end;
+}
+
+.msg.bot {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 60%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.msg.user .bubble {
+  background: linear-gradient(135deg, #2d6cdf, #4f8cff);
+  color: white;
+}
+
+/* Meta */
+.meta {
+  font-size: 11px;
+  color: #cedbf5;
+  margin-bottom: 4px;
+}
+
+/* ===================== */
+/* INPUT */
+/* ===================== */
+.input-box {
+  padding: 15px;
+}
+
+.input-box-inner {
+  display: flex;
+  align-items: center;
+  border-radius: 30px;
+  padding: 10px 15px;
+  gap: 10px;
+  max-width: 900px;
+  margin: 0 auto;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(12px);
+}
+
+textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+}
+
+button {
+  background: linear-gradient(135deg, #2d6cdf, #4f8cff);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  padding: 10px;
+  cursor: pointer;
+}
+
+/* ===================== */
+/* FLOATING SUGGESTIONS */
+/* ===================== */
+.suggestions {
+  position: fixed;
+  bottom: 110px;
+  left: 55%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  z-index: 10;
+}
+
+.suggestion {
+  background: white;
+  border: 2px solid #e0e7ff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: 0.2s;
+}
+
+.suggestion:hover {
+  background: linear-gradient(135deg, #2d6cdf, #4f8cff);
+  color: white;
+}
+
+/* ===================== */
+/* DARK MODE (FIXED) */
+/* ===================== */
+
+.dark-mode {
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+/* Sidebar */
+.dark-mode .sidebar {
+  background: #020617;
+}
+
+/* Topbar */
+.dark-mode .topbar {
+  background: #020617;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Title */
+.dark-mode .title {
+  color: #60a5fa;
+}
+
+/* Chat */
+.dark-mode .chat-area {
+  background: #0f172a;
+}
+
+/* Bot bubbles */
+.dark-mode .bubble {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+/* User bubbles */
+.dark-mode .msg.user .bubble {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: white;
+}
+
+/* Timestamp FIX */
+.dark-mode .meta {
+  color: #cbd5f5 !important;
+}
+
+/* Input */
+.dark-mode .input-box-inner {
+  background: #1e293b;
+}
+
+/* Textarea */
+.dark-mode textarea {
+  color: white;
+}
+
+/* Suggestions */
+.dark-mode .suggestion {
+  background: #1e293b;
+  color: #e5e7eb;
+}
+
+/* Hover */
+.dark-mode .suggestion:hover {
+  background: #2563eb;
+}
+
+/* User dropdown */
+.dark-mode .user-menu {
+  background: #1e293b;
+  color: white;
+}
+.dark-mode .nike-logo {
+  filter: brightness(0) invert(1);
+}
+
+/* ===================== */
+/* DARK MODE TOGGLE FIX */
+/* ===================== */
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  margin-top: 5px;
+}
+
+/* Hide checkbox */
+.theme-toggle input {
+  display: none;
+}
+
+/* Toggle background */
+.toggle-label {
+  width: 50px;
+  height: 26px;
+  background: linear-gradient(135deg, #2d6cdf, #4f8cff);
+  border-radius: 50px;
+  position: relative;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+/* Ball */
+.toggle-ball {
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  transition: 0.3s;
+}
+
+/* Move ball */
+.theme-toggle input:checked + .toggle-label .toggle-ball {
+  transform: translateX(24px);
+}
+
+/* Dark style */
+.theme-toggle input:checked + .toggle-label {
+  background: #111827;
+}
+
+/* ===================== */
+/* ANIMATION */
+/* ===================== */
+@keyframes fadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* ===================== */
+/* USER FIX (BOTTOM ALIGN) */
+/* ===================== */
+
+.user-info {
+  margin-top: auto;   /* 🔥 THIS PUSHES IT DOWN */
+  
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.219);
+
+  position: relative;
+  cursor: pointer;
+}
