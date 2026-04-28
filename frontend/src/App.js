@@ -342,6 +342,7 @@ function App() {
               </button>
 
               <textarea
+                
                 ref={textareaRef}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
