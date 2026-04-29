@@ -1,7 +1,21 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 import ReactMarkdown from "react-markdown";
-import { FaMicrophone, FaMicrophoneSlash, FaPaperclip, FaPaperPlane, FaUserCircle, FaSun, FaMoon, FaFileAlt, FaSitemap, FaLightbulb, FaChartBar } from "react-icons/fa";
+import { FaMicrophone, FaMicrophoneSlash, FaPaperclip, FaPaperPlane, FaUserCircle, FaSun, FaMoon, FaFileAlt, FaSitemap, FaLightbulb, FaChartBar, FaSearch, FaEdit, FaColumns, FaDownload } from "react-icons/fa";
+
+function SwooshLogo({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 192.756 192.756" xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd">
+      <defs>
+        <linearGradient id="swooshGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#7C3AED" />
+        </linearGradient>
+      </defs>
+      <path fill="url(#swooshGrad)" d="M42.741 71.477c-9.881 11.604-19.355 25.994-19.45 36.75-.037 4.047 1.255 7.58 4.354 10.256 4.46 3.854 9.374 5.213 14.264 5.221 7.146.01 14.242-2.873 19.798-5.096 9.357-3.742 112.79-48.659 112.79-48.659.998-.5.811-1.123-.438-.812-.504.126-112.603 30.505-112.603 30.505a24.771 24.771 0 0 1-6.524.934c-8.615.051-16.281-4.731-16.219-14.808.024-3.943 1.231-8.698 4.028-14.291z"/>
+    </svg>
+  );
+}
 
 function App() {
   const [message, setMessage] = useState("");
@@ -14,10 +28,18 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState(localStorage.getItem("userName") || "");
   const [isRecording, setIsRecording] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const toggleRecording = () => {
     setIsRecording((prev) => !prev);
   };
+
+  useEffect(() => {
+    const close = () => setShowMenu(false);
+    if (showMenu) document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [showMenu]);
 
 
   const chatEndRef = useRef(null);
@@ -45,7 +67,7 @@ function App() {
       try {
         setUploadStatus(`⏳ Uploading ${file.name}...`);
 
-        const res = await fetch("/api/upload", {
+        const res = await fetch("http://localhost:8001/upload", {
           method: "POST",
           body: formData,
         });
@@ -160,7 +182,7 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("http://localhost:8001/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userText })
@@ -206,50 +228,108 @@ function App() {
       {isLoggedIn ? (
         <>
         {/* Sidebar — only shown after login */}
-        <div className="sidebar">
-          <div>
-            <div className="brand-logo">
-            <h2 className="brand-gradient">SwooshAI</h2>
-            <span className="tag">JUSTASK</span>
+        <div className={`sidebar ${sidebarOpen ? "" : "collapsed"}`}>
+
+          {/* Header: brand + toggle */}
+          <div className="sidebar-header">
+            {sidebarOpen && (
+              <div className="brand-block">
+                <div className="brand-logo-row">
+                  <h2 className="brand-gradient">SwooshAI</h2>
+                  <SwooshLogo className="sidebar-swoosh" />
+                </div>
+                <span className="tag">JUSTASK</span>
+              </div>
+            )}
+            <button
+              className="sidebar-toggle"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            >
+              <FaColumns size={15} />
+            </button>
           </div>
 
-            <button className="new-chat" onClick={newChat}>
-              + New Chat
+          {/* New Chat */}
+          <button className="new-chat" onClick={newChat}>
+            <FaEdit size={14} />
+            {sidebarOpen && <span>New Chat</span>}
+          </button>
+
+          {/* Export Chat */}
+          <button className="sidebar-row-btn export-btn" onClick={exportChat} title="Export chat">
+            <FaDownload size={14} />
+            {sidebarOpen && <span>Export Chat</span>}
+          </button>
+
+          {/* Search */}
+          {sidebarOpen ? (
+            <div className="sidebar-search">
+              <FaSearch size={13} />
+              <input
+                type="text"
+                placeholder="Search chats..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          ) : (
+            <button className="sidebar-icon-btn" title="Search">
+              <FaSearch size={15} />
+            </button>
+          )}
+
+          {/* Recents */}
+          {sidebarOpen && (
+            <div className="recent">
+              {history.length > 0 && <div className="recent-label">Recents</div>}
+              {history
+                .filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map((item, i) => (
+                  <div key={i} className="chat-item" onClick={() => loadChat(item)}>
+                    {item.title}
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Bottom */}
+          <div className="sidebar-bottom">
+            {/* Dark mode */}
+            <button
+              className="sidebar-row-btn"
+              onClick={() => setDarkMode(!darkMode)}
+              title={darkMode ? "Light mode" : "Dark mode"}
+            >
+              {darkMode ? <FaSun size={15} /> : <FaMoon size={15} />}
+              {sidebarOpen && <span>{darkMode ? "Light mode" : "Dark mode"}</span>}
             </button>
 
-            <div className="recent">
-              {history.map((item, i) => (
-                <div key={i} className="chat-item" onClick={() => loadChat(item)}>
-                  {item.title}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Bottom user */}
-          <div
-            className="user-info"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu((prev) => !prev);
-            }}
-          >
-            <div className="user-avatar"><FaUserCircle size={20} /></div>
-            <div>
-              <div className="user-name">{userName || "User"}</div>
-              <div className="user-role">Logged In</div>
-            </div>
-
+            {/* User menu — rendered above user-info, outside overflow:hidden clip */}
             {showMenu && (
               <div className="user-menu">
-                <div className="menu-item" onClick={exportChat}>
-                  Export chat
-                </div>
                 <div className="menu-item logout" onClick={logout}>
                   Logout
                 </div>
               </div>
             )}
+
+            {/* User */}
+            <div
+              className="user-info"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu((prev) => !prev);
+              }}
+            >
+              <div className="user-avatar"><FaUserCircle size={20} /></div>
+              {sidebarOpen && (
+                <div>
+                  <div className="user-name">{userName || "User"}</div>
+                  <div className="user-role">Logged In</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -257,20 +337,10 @@ function App() {
 
           {/* Topbar */}
           <div className="topbar">
-            <img src="/nike.png" className="logo nike-logo" />
+            <div></div>
             <h3 className="title">Your assistant</h3>
-
             <div className="top-right">
-              <img src="/quadrant.png" className="logo quadrant-logo" />
-
-              <button
-                type="button"
-                className="audio-btn theme-btn"
-                onClick={() => setDarkMode(!darkMode)}
-                title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {darkMode ? <FaSun size={17} /> : <FaMoon size={17} />}
-              </button>
+              <img src="/Qlogo.png" className="logo quadrant-logo" />
             </div>
           </div>
 
@@ -381,7 +451,7 @@ function App() {
       ) : (
         <div className="login-container">
           <div className="login-form">
-            <img src="/nike.png" className="login-nike-logo" alt="Nike" />
+            <SwooshLogo className="login-nike-logo" />
             <h1 className="login-title">Welcome to SwooshAI</h1>
             <p className="login-subtitle">Your intelligent Nike knowledge assistant</p>
 
