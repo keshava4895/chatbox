@@ -340,7 +340,10 @@ function App() {
             <div></div>
             <h3 className="title">Your assistant</h3>
             <div className="top-right">
-              <img src="/Qlogo.png" className="logo quadrant-logo" />
+              <div className="quadrant-block">
+                <img src="/Qlogo.svg" className="logo quadrant-logo" />
+                <div className="quadrant-tagline">Powered By Quadrant</div>
+              </div>
             </div>
           </div>
 
