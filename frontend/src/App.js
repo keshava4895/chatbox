@@ -50,10 +50,10 @@ function App() {
   const [uploadStatus, setUploadStatus] = useState("");
 
   const suggestions = [
-    { icon: <FaFileAlt size={18} />,  title: "Summarize a document",  desc: "Get a concise overview of any uploaded file" },
-    { icon: <FaSitemap size={18} />,  title: "Explain architecture",   desc: "Understand system design and infrastructure" },
-    { icon: <FaLightbulb size={18} />,title: "Key insights",           desc: "Extract the most important findings" },
-    { icon: <FaChartBar size={18} />, title: "Generate a report",      desc: "Create a structured report from documents" },
+    { icon: <FaFileAlt size={18} />,  title: "Summarize this project",  desc: "Get a concise overview of what this project is about", prompt: "Can you give me a summary of what this project is about and what it covers?" },
+    { icon: <FaSitemap size={18} />,  title: "Explain architecture",    desc: "Understand system design and infrastructure",            prompt: "Can you explain the system architecture and how the components are designed?" },
+    { icon: <FaLightbulb size={18} />,title: "Key insights",            desc: "Extract the most important findings",                    prompt: "What are the key insights and most important findings from the knowledge base?" },
+    { icon: <FaChartBar size={18} />, title: "Generate a report",       desc: "Create a structured report from documents",             prompt: "Can you generate a structured summary report based on the available documents?" },
   ];
 
   // Upload function with status feedback
@@ -168,10 +168,10 @@ function App() {
 
   const loadChat = (item) => setChat(item.data);
 
-  const sendMessage = async () => {
-    if (!message.trim() || loading) return;
+  const sendMessage = async (overrideText) => {
+    const userText = overrideText || message;
+    if (!userText.trim() || loading) return;
 
-    const userText = message;
     setMessage("");
 
     setChat((prev) => [
@@ -357,7 +357,7 @@ function App() {
                 <p className="welcome-sub">Ask anything about Nike's knowledge base</p>
                 <div className="suggestions">
                   {suggestions.map((s, i) => (
-                    <div key={i} className="suggestion" onClick={() => setMessage(s.title)}>
+                    <div key={i} className="suggestion" onClick={() => sendMessage(s.prompt)}>
                       <div className="suggestion-icon">{s.icon}</div>
                       <div className="suggestion-title">{s.title}</div>
                       <div className="suggestion-desc">{s.desc}</div>

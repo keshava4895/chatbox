@@ -970,7 +970,7 @@ button:hover {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(145deg, #f5f0ff 0%, #ede9fe 40%, #f0f4ff 100%);
+  background: #f2f2f2;
 }
 
 .login-form {
@@ -987,9 +987,9 @@ button:hover {
 }
 
 .login-nike-logo {
-  height: 56px;
+  height: 72px;
   width: auto;
-  margin-bottom: 28px;
+  margin: 0 auto 28px;
   display: block;
 }
 
