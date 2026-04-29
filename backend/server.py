@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-import hashlib  # ✅ fixes invalid document key error
+import hashlib
 import requests
 import os
 import io
@@ -15,18 +15,11 @@ from pathlib import Path
 from PyPDF2 import PdfReader
 from docx import Document
 
-from fastapi import FastAPI, UploadFile, File
-from azure.storage.blob import BlobServiceClient
-
-app = FastAPI()
-
 
 # ===================== LOAD ENV =====================
 
 env_path = Path(__file__).parent / ".env"
-print("Looking for .env at:", env_path)
 load_dotenv(dotenv_path=env_path, override=True)
-print("Loaded OPENAI_KEY:", os.getenv("OPENAI_KEY"))
 
 # ===================== CONFIG =====================
 
@@ -87,7 +80,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
@@ -226,6 +219,19 @@ def create_index():
     else:
         print(f"❌ Index creation failed: {res.status_code} - {res.text}")
 
+# ===================== ENSURE INDEX =====================
+
+def ensure_index_exists():
+    """Create the index only if it doesn't already exist."""
+    url = f"{AZURE_SEARCH_ENDPOINT}/indexes/{INDEX_NAME}?api-version=2024-07-01"
+    headers = {"api-key": AZURE_SEARCH_KEY}
+    res = requests.get(url, headers=headers)
+    if res.status_code == 404:
+        print(f"Index '{INDEX_NAME}' not found — creating...")
+        create_index()
+    else:
+        print(f"✅ Index '{INDEX_NAME}' already exists")
+
 # ===================== BULK INDEX =====================
 
 def bulk_index():
@@ -303,14 +309,11 @@ def bulk_index():
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
-    """Upload a file to Blob Storage and index it. Supports: .pdf, .docx, .txt"""
+    """Upload a file to Blob Storage and index only that file."""
     try:
-        print(f"📁 Received upload request for: {file.filename}")
-        
         content = await file.read()
-        print(f"📦 File size: {len(content)} bytes")
 
-        # 1. Upload raw file to Blob Storage
+        # 1. Upload to blob
         blob_client = blob_service.get_blob_client(
             container=CONTAINER_NAME,
             blob=file.filename
@@ -318,23 +321,20 @@ async def upload(file: UploadFile = File(...)):
         blob_client.upload_blob(content, overwrite=True)
         print(f"✅ Uploaded to blob: {file.filename}")
 
-        # 2. Extract text based on file type
-        text = read_file_bytes(file.filename, content)
-        print(f"📄 Extracted text length: {len(text)} chars")
+        # 2. Ensure index exists (creates it only on first upload)
+        ensure_index_exists()
 
+        # 3. Extract text
+        text = read_file_bytes(file.filename, content)
         if not text.strip():
-            print(f"⚠️ No text extracted from {file.filename}")
             raise HTTPException(status_code=400, detail="Could not extract text from file.")
 
-        # 3. Chunk and embed
+        # 4. Chunk, embed, push — only this file
         chunks = chunk_text(text)
-        print(f"🔀 Created {len(chunks)} chunks")
-
         docs = []
         for i, chunk in enumerate(chunks):
             # md5 hash as key
             doc_id = hashlib.md5(f"{file.filename}-{i}".encode()).hexdigest()
-            print(f"  Embedding chunk {i+1}/{len(chunks)}...")
             docs.append({
                 "id": doc_id,
                 "content": chunk,
@@ -342,24 +342,20 @@ async def upload(file: UploadFile = File(...)):
                 "contentVector": get_embedding(chunk)
             })
 
-        # 4. Push to AI Search
         url = f"{AZURE_SEARCH_ENDPOINT}/indexes/{INDEX_NAME}/docs/index?api-version=2024-07-01"
         res = requests.post(
             url,
             headers={"Content-Type": "application/json", "api-key": AZURE_SEARCH_KEY},
             json={"value": docs}
         )
-
         if res.status_code not in [200, 201]:
-            print(f"❌ Indexing failed: {res.status_code} - {res.text}")
             raise HTTPException(status_code=500, detail=f"Indexing failed: {res.text}")
 
-        print(f"✅ Successfully indexed {len(docs)} documents")
-        return {"status": "Indexed successfully", "file": file.filename, "chunks": len(docs)}
-    
-    except HTTPException as he:
-        print(f"❌ HTTP Error: {he.detail}")
-        raise he
+        print(f"✅ Indexed {len(docs)} chunks for {file.filename}")
+        return {"status": "uploaded", "file": file.filename, "chunks": len(docs)}
+
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Upload Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
