@@ -2,3 +2,9 @@ fastapi
 uvicorn
 PyPDF2
 python-docx
+azure-storage-blob
+azure-search-documents
+openai
+python-dotenv
+requests
+python-multipart
