@@ -57,7 +57,7 @@ client = AzureOpenAI(
 
 blob_service = BlobServiceClient.from_connection_string(AZURE_BLOB_CONN)
 
-# ✅ Ensure container exists on startup
+# Ensure container exists on startup
 try:
     container_client = blob_service.get_container_client(CONTAINER_NAME)
     container_client.get_container_properties()
@@ -333,6 +333,7 @@ async def upload(file: UploadFile = File(...)):
         chunks = chunk_text(text)
         docs = []
         for i, chunk in enumerate(chunks):
+            # md5 hash as key
             doc_id = hashlib.md5(f"{file.filename}-{i}".encode()).hexdigest()
             docs.append({
                 "id": doc_id,
@@ -368,7 +369,7 @@ def search(query: str):
         url = f"{AZURE_SEARCH_ENDPOINT}/indexes/{INDEX_NAME}/docs/search?api-version=2024-07-01"
         headers = {"Content-Type": "application/json", "api-key": AZURE_SEARCH_KEY}
 
-        # ✅ Current vectorQueries syntax
+        # Current vectorQueries syntax
         vector_body = {
             "vectorQueries": [
                 {
@@ -440,16 +441,16 @@ Respond with ONLY one word: GENERAL or RAG
 @app.post("/chat")
 async def chat(query: Query):
     try:
-        # 🔥 STEP 1 — Detect intent
+        #  STEP 1 — Detect intent
         intent = detect_intent(query.message)
 
-        # 🔥 STEP 2 — Only search if RAG
+        #  STEP 2 — Only search if RAG
         context = ""
         if intent == "RAG":
             chunks = search(query.message)
             context = "\n\n".join(chunks)
 
-        # 🔥 STEP 3 — Decide mode
+        #  STEP 3 — Decide mode
         if intent == "GENERAL" or not context.strip():
             system_content = f"""
 You are SwooshAI, an elite Nike AI assistant.
@@ -468,7 +469,7 @@ A: Good morning! How can I help you today?
 Be conversational and concise.
 """
         else:
-            # 🔥 RAG MODE (UNCHANGED)
+            #  RAG MODE (UNCHANGED)
             system_content = f"""
 You are SwooshAI, an elite Nike internal AI assistant specializing in 
 technical documentation, data engineering, and enterprise systems.
