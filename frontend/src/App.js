@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 import ReactMarkdown from "react-markdown";
-import { FaMicrophone, FaMicrophoneSlash, FaPaperclip, FaPaperPlane, FaUserCircle } from "react-icons/fa";
+import { FaMicrophone, FaMicrophoneSlash, FaPaperclip, FaPaperPlane, FaUserCircle, FaSun, FaMoon, FaFileAlt, FaSitemap, FaLightbulb, FaChartBar } from "react-icons/fa";
 
 function App() {
   const [message, setMessage] = useState("");
@@ -23,18 +23,18 @@ function App() {
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // ✅ Upload ref
+  // Upload ref
   const fileInputRef = useRef(null);
   const [uploadStatus, setUploadStatus] = useState("");
 
   const suggestions = [
-    "Summarize this project",
-    "Explain architecture",
-    "Key insights?",
-    "Generate report"
+    { icon: <FaFileAlt size={18} />,  title: "Summarize a document",  desc: "Get a concise overview of any uploaded file" },
+    { icon: <FaSitemap size={18} />,  title: "Explain architecture",   desc: "Understand system design and infrastructure" },
+    { icon: <FaLightbulb size={18} />,title: "Key insights",           desc: "Extract the most important findings" },
+    { icon: <FaChartBar size={18} />, title: "Generate a report",      desc: "Create a structured report from documents" },
   ];
 
-  // ✅ Upload function with status feedback
+  // Upload function with status feedback
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
 
@@ -203,55 +203,56 @@ function App() {
   return (
     <div className="app">
 
-      {/* Sidebar */}
-      <div className="sidebar">
-        <div>
-          <div className="brand-logo">
-          <h2 className="brand-gradient">SwooshAI</h2>
-          <span className="tag">JUSTASK</span>
-        </div>
-
-          <button className="new-chat" onClick={newChat}>
-            + New Chat
-          </button>
-
-          <div className="recent">
-            {history.map((item, i) => (
-              <div key={i} className="chat-item" onClick={() => loadChat(item)}>
-                {item.title}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Bottom user */}
-        <div
-          className="user-info"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowMenu((prev) => !prev);
-          }}
-        >
-          <div className="user-avatar"><FaUserCircle size={20} /></div>
-          <div>
-            <div className="user-name">{userName || "User"}</div>
-            <div className="user-role">Logged In</div>
-          </div>
-
-          {showMenu && (
-            <div className="user-menu">
-              <div className="menu-item" onClick={exportChat}>
-                Export chat
-              </div>
-              <div className="menu-item logout" onClick={logout}>
-                Logout
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       {isLoggedIn ? (
+        <>
+        {/* Sidebar — only shown after login */}
+        <div className="sidebar">
+          <div>
+            <div className="brand-logo">
+            <h2 className="brand-gradient">SwooshAI</h2>
+            <span className="tag">JUSTASK</span>
+          </div>
+
+            <button className="new-chat" onClick={newChat}>
+              + New Chat
+            </button>
+
+            <div className="recent">
+              {history.map((item, i) => (
+                <div key={i} className="chat-item" onClick={() => loadChat(item)}>
+                  {item.title}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom user */}
+          <div
+            className="user-info"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu((prev) => !prev);
+            }}
+          >
+            <div className="user-avatar"><FaUserCircle size={20} /></div>
+            <div>
+              <div className="user-name">{userName || "User"}</div>
+              <div className="user-role">Logged In</div>
+            </div>
+
+            {showMenu && (
+              <div className="user-menu">
+                <div className="menu-item" onClick={exportChat}>
+                  Export chat
+                </div>
+                <div className="menu-item logout" onClick={logout}>
+                  Logout
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="main">
 
           {/* Topbar */}
@@ -262,17 +263,14 @@ function App() {
             <div className="top-right">
               <img src="/quadrant.png" className="logo quadrant-logo" />
 
-              <div className="theme-toggle">
-                <input
-                  id="theme-toggle"
-                  type="checkbox"
-                  checked={darkMode}
-                  onChange={() => setDarkMode(!darkMode)}
-                />
-                <label htmlFor="theme-toggle" className="toggle-label">
-                  <span className="toggle-ball" />
-                </label>
-              </div>
+              <button
+                type="button"
+                className="audio-btn theme-btn"
+                onClick={() => setDarkMode(!darkMode)}
+                title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {darkMode ? <FaSun size={17} /> : <FaMoon size={17} />}
+              </button>
             </div>
           </div>
 
@@ -283,6 +281,22 @@ function App() {
             </div>
           )}
           <div className="chat-area">
+            {chat.length === 0 && !loading && (
+              <div className="welcome-screen">
+                <h2 className="welcome-title">How can I help you today?</h2>
+                <p className="welcome-sub">Ask anything about Nike's knowledge base</p>
+                <div className="suggestions">
+                  {suggestions.map((s, i) => (
+                    <div key={i} className="suggestion" onClick={() => setMessage(s.title)}>
+                      <div className="suggestion-icon">{s.icon}</div>
+                      <div className="suggestion-title">{s.title}</div>
+                      <div className="suggestion-desc">{s.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {chat.map((c, i) => (
               <div key={i} className={`msg ${c.role}`}>
                 <div className="bubble">
@@ -342,7 +356,7 @@ function App() {
               </button>
 
               <textarea
-                
+                rows={1}
                 ref={textareaRef}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -363,17 +377,30 @@ function App() {
           </div>
 
         </div>
+        </>
       ) : (
         <div className="login-container">
           <div className="login-form">
-            <h1>Welcome to SwooshAI</h1>
-            <input
-              type="text"
-              placeholder="Enter your name or email"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-            />
-            <button onClick={login}>Start Chatting</button>
+            <img src="/nike.png" className="login-nike-logo" alt="Nike" />
+            <h1 className="login-title">Welcome to SwooshAI</h1>
+            <p className="login-subtitle">Your intelligent Nike knowledge assistant</p>
+
+            <div className="login-input-wrapper">
+              <FaUserCircle className="login-input-icon" size={17} />
+              <input
+                type="text"
+                placeholder="Enter your name or email"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && login()}
+              />
+            </div>
+
+            <button onClick={login}>
+              Start Chatting &nbsp;<FaPaperPlane size={13} />
+            </button>
+
+            <p className="login-footer">Secure &middot; Internal Use Only</p>
           </div>
         </div>
       )}
