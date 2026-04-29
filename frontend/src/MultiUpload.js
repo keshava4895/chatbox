@@ -3,7 +3,7 @@ import React, { useRef, useState } from "react";
 export default function MultiUpload() {
   const fileInputRef = useRef();
 
-  // ✅ NEW: status state
+  // NEW: status state
   const [status, setStatus] = useState("");
 
   const handleClick = () => {
@@ -49,7 +49,7 @@ export default function MultiUpload() {
         onChange={handleChange}
       />
 
-      {/* ✅ NEW: Popup */}
+      {/* NEW: Popup */}
       {status && (
         <div className="upload-popup">
           {status}
