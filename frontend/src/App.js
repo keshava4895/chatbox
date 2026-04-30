@@ -431,12 +431,12 @@ function App() {
                   <div className="meta">
                     {c.role === "user" ? "You" : "SwooshAI"} •{" "}
                     {new Date(c.time).toLocaleTimeString()}
-                    {c.confidence != null && (
-                      <span className={`confidence-badge ${c.confidence >= 80 ? "confidence-high" : c.confidence >= 60 ? "confidence-medium" : "confidence-low"}`}>
-                        {c.confidence}% Confidence
-                      </span>
-                    )}
                   </div>
+                  {c.confidence != null && (
+                    <span className={`confidence-badge ${c.confidence >= 80 ? "confidence-high" : c.confidence >= 60 ? "confidence-medium" : "confidence-low"}`}>
+                      {c.confidence}% Confidence
+                    </span>
+                  )}
                   <ReactMarkdown components={markdownComponents}>{c.text}</ReactMarkdown>
                   {c.sources && c.sources.length > 0 && (
                     <div className="sources">
