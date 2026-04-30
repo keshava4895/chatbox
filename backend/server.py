@@ -115,7 +115,7 @@ def read_file(path: str) -> str:
 
 # ===================== CHUNKING =====================
 
-def chunk_text(text: str, size: int = 800, overlap: int = 100):
+def chunk_text(text: str, size: int = 400, overlap: int = 100):
     """Chunk text with overlap to preserve context across boundaries."""
     chunks = []
     start = 0
@@ -363,10 +363,38 @@ async def upload(file: UploadFile = File(...)):
 
 # ===================== SEARCH =====================
 
+def expand_query(question: str) -> str:
+    """Rephrase the user question into a richer search query for better vector match."""
+    try:
+        response = client.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Rephrase the user's question as a detailed, keyword-rich search query "
+                        "for a technical enterprise knowledge base. Expand acronyms, add relevant "
+                        "technical synonyms, and make it specific. Return ONLY the rephrased query, "
+                        "no explanation."
+                    )
+                },
+                {"role": "user", "content": question}
+            ],
+            temperature=0,
+            max_tokens=100
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Query expansion error: {e}")
+        return question
+
+
 def search(query: str):
     """Vector search with keyword fallback."""
     try:
-        vector = get_embedding(query)
+        expanded = expand_query(query)
+        print(f"Expanded query: {expanded}")
+        vector = get_embedding(expanded)
         url = f"{AZURE_SEARCH_ENDPOINT}/indexes/{INDEX_NAME}/docs/search?api-version=2024-07-01"
         headers = {"Content-Type": "application/json", "api-key": AZURE_SEARCH_KEY}
 
@@ -579,7 +607,7 @@ CONTEXT
 
         def stream():
             try:
-                # 🔥 STEP 4 — Adjust user prompt based on intent
+                # STEP 4 — Adjust user prompt based on intent
                 user_prompt = (
                     f"Give a structured answer with bullet points: {query.message}"
                     if intent == "RAG" and context.strip()
