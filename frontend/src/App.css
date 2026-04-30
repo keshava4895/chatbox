@@ -1064,6 +1064,29 @@ button:hover {
 }
 
 /* ===================== */
+/* RESPONSE HEADINGS */
+/* ===================== */
+.response-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111111;
+  margin: 14px 0 4px;
+}
+
+.response-heading-icon {
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dark-mode .response-heading { color: #f0f0f0; }
+.dark-mode .response-heading-icon { color: #a78bfa; }
+
+/* ===================== */
 /* CONFIDENCE BADGE */
 /* ===================== */
 .confidence-badge {

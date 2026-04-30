@@ -538,27 +538,27 @@ CORE DIRECTIVES
 RESPONSE ARCHITECTURE (STRICTLY FOLLOW)
 ═══════════════════════════════════════════
  
-**🔍 Overview**
+## Overview
 Provide a precise 2–3 sentence technical summary.
 Use domain-specific terminology where appropriate.
- 
-**⚙️ Technical Breakdown**
+
+## Technical Breakdown
 - Break down components, services, or steps involved
 - Reference specific tools, technologies, or configurations
 - Bold key technical terms: **Lakebridge**, **Delta Lake**, **SQL Transpilation**
 - Use sub-bullets for nested technical details
- 
-**📋 Step-by-Step Process (if applicable)**
+
+## Step-by-Step Process (if applicable)
 1. First step with technical detail
 2. Second step with technical detail
 3. Continue as needed...
- 
-**⚠️ Technical Considerations**
+
+## Technical Considerations
 - Highlight architecture decisions, limitations, or dependencies
 - Mention performance implications if relevant
 - Flag any prerequisites or configuration requirements
- 
-**💡 Key Takeaway**
+
+## Key Takeaway
 One sentence — the most critical technical insight from the answer.
  
 ═══════════════════════════════════════════

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 import ReactMarkdown from "react-markdown";
-import { FaMicrophone, FaMicrophoneSlash, FaPaperclip, FaPaperPlane, FaUserCircle, FaSun, FaMoon, FaFileAlt, FaSitemap, FaLightbulb, FaChartBar, FaSearch, FaEdit, FaColumns, FaDownload } from "react-icons/fa";
+import { FaMicrophone, FaMicrophoneSlash, FaPaperclip, FaPaperPlane, FaUserCircle, FaSun, FaMoon, FaFileAlt, FaSitemap, FaLightbulb, FaChartBar, FaSearch, FaEdit, FaColumns, FaDownload, FaTools, FaListUl, FaExclamationTriangle } from "react-icons/fa";
 
 function SwooshLogo({ className }) {
   return (
@@ -16,6 +16,27 @@ function SwooshLogo({ className }) {
     </svg>
   );
 }
+
+const HEADING_ICONS = {
+  "Overview":               <FaSearch size={13} />,
+  "Technical Breakdown":    <FaTools size={13} />,
+  "Step-by-Step Process":   <FaListUl size={13} />,
+  "Technical Considerations": <FaExclamationTriangle size={13} />,
+  "Key Takeaway":           <FaLightbulb size={13} />,
+};
+
+const markdownComponents = {
+  h2: ({ children }) => {
+    const text = String(children);
+    const icon = Object.entries(HEADING_ICONS).find(([key]) => text.includes(key))?.[1];
+    return (
+      <div className="response-heading">
+        {icon && <span className="response-heading-icon">{icon}</span>}
+        <span>{children}</span>
+      </div>
+    );
+  },
+};
 
 function App() {
   const [message, setMessage] = useState("");
@@ -416,7 +437,7 @@ function App() {
                       </span>
                     )}
                   </div>
-                  <ReactMarkdown>{c.text}</ReactMarkdown>
+                  <ReactMarkdown components={markdownComponents}>{c.text}</ReactMarkdown>
                   {c.sources && c.sources.length > 0 && (
                     <div className="sources">
                       <span className="sources-label">Sources</span>
