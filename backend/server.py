@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 import hashlib
+import json
 import requests
 import os
 import io
@@ -389,26 +390,66 @@ def search(query: str):
         if res.status_code == 200:
             docs = res.json().get("value", [])
             if docs:
-                return [d["content"] for d in docs]
+                return [{"content": d["content"], "file_name": d.get("file_name", ""), "score": d.get("@search.score", 0)} for d in docs]
 
-        # Fallback: keyword search
+        # Fallback: keyword search (BM25 scores aren't cosine-comparable, use fixed low score)
         print("Falling back to keyword search...")
         text_body = {
             "search": query,
             "searchFields": "content",
-            "select": "content",
+            "select": "content, file_name",
             "top": 5
         }
         res = requests.post(url, headers=headers, json=text_body)
         print(f"Keyword search: HTTP {res.status_code}")
 
         if res.status_code == 200:
-            return [d["content"] for d in res.json().get("value", [])]
+            return [{"content": d["content"], "file_name": d.get("file_name", ""), "score": 0.4} for d in res.json().get("value", [])]
 
         return []
 
     except Exception as e:
         print(f"Search Error: {e}")
+        return []
+
+# ===================== FOLLOW-UP QUESTIONS =====================
+
+def generate_followups(question: str, context: str) -> list:
+    """Generate 3 short follow-up questions based on the user's question and any retrieved context."""
+    try:
+        context_line = f"\n\nContext: {context[:600]}" if context.strip() else ""
+        response = client.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Based on the user's question, generate exactly 3 short follow-up questions "
+                        "the user might want to ask next. Each question must be under 12 words. "
+                        "Respond with ONLY a JSON array of 3 strings, no explanation, no markdown."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": f"Question: {question}{context_line}"
+                }
+            ],
+            temperature=0.4,
+            max_tokens=150
+        )
+        raw = response.choices[0].message.content.strip()
+        # Strip markdown code fences if the LLM wraps the JSON
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        followups = json.loads(raw)
+        if isinstance(followups, list):
+            return [q for q in followups if isinstance(q, str)][:3]
+        return []
+    except Exception as e:
+        print(f"Followup generation error: {e}")
         return []
 
 # ===================== CHAT =====================
@@ -446,9 +487,19 @@ async def chat(query: Query):
 
         #  STEP 2 — Only search if RAG
         context = ""
+        sources = []
+        confidence = 0
         if intent == "RAG":
-            chunks = search(query.message)
-            context = "\n\n".join(chunks)
+            results = search(query.message)
+            context = "\n\n".join(r["content"] for r in results)
+            top_scores = [r.get("score", 0) for r in results[:3]]
+            confidence = round(min(sum(top_scores) / len(top_scores), 1) * 100) if top_scores else 0
+            seen = set()
+            for r in results:
+                fn = r.get("file_name", "")
+                if fn and fn not in seen:
+                    sources.append(fn)
+                    seen.add(fn)
 
         #  STEP 3 — Decide mode
         if intent == "GENERAL" or not context.strip():
@@ -550,6 +601,15 @@ CONTEXT
                     delta = chunk.choices[0].delta
                     if hasattr(delta, "content") and delta.content:
                         yield delta.content
+
+                if sources:
+                    yield f"\x00SOURCES\x00{json.dumps(sources)}"
+
+                if intent == "RAG" and context.strip():
+                    yield f"\x00CONFIDENCE\x00{confidence}"
+                    followups = generate_followups(query.message, context)
+                    if followups:
+                        yield f"\x00FOLLOWUPS\x00{json.dumps(followups)}"
 
             except Exception as e:
                 print(f"OpenAI Streaming Error: {e}")

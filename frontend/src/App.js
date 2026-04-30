@@ -192,6 +192,17 @@ function App() {
       const decoder = new TextDecoder("utf-8");
 
       let botText = "";
+      const SOURCES_SEP = "\x00SOURCES\x00";
+      const CONFIDENCE_SEP = "\x00CONFIDENCE\x00";
+      const FOLLOWUPS_SEP = "\x00FOLLOWUPS\x00";
+
+      const parseSentinel = (text, sep) => {
+        const idx = text.indexOf(sep);
+        if (idx === -1) return null;
+        const after = text.slice(idx + sep.length);
+        const end = after.indexOf("\x00");
+        return end !== -1 ? after.slice(0, end) : after;
+      };
 
       setChat((prev) => [
         ...prev,
@@ -205,9 +216,32 @@ function App() {
         const chunk = decoder.decode(value);
         botText += chunk;
 
+        const firstMarker = botText.indexOf("\x00");
+        const displayText = firstMarker !== -1 ? botText.slice(0, firstMarker) : botText;
+
         setChat((prev) => {
           const updated = [...prev];
-          updated[updated.length - 1].text = botText;
+          updated[updated.length - 1].text = displayText;
+          return updated;
+        });
+      }
+
+      // Parse all sentinels from the end of the stream
+      let sources = [];
+      let confidence = null;
+      let followups = [];
+      try { const r = parseSentinel(botText, SOURCES_SEP);   if (r) sources   = JSON.parse(r); } catch {}
+      try { const r = parseSentinel(botText, CONFIDENCE_SEP); if (r) confidence = parseInt(r, 10); } catch {}
+      try { const r = parseSentinel(botText, FOLLOWUPS_SEP);  if (r) followups  = JSON.parse(r); } catch {}
+
+      if (sources.length > 0 || confidence !== null || followups.length > 0) {
+        setChat((prev) => {
+          const updated = [...prev];
+          const msg = { ...updated[updated.length - 1] };
+          if (sources.length > 0)  msg.sources    = sources;
+          if (confidence !== null) msg.confidence = confidence;
+          if (followups.length > 0) msg.followups  = followups;
+          updated[updated.length - 1] = msg;
           return updated;
         });
       }
@@ -376,8 +410,32 @@ function App() {
                   <div className="meta">
                     {c.role === "user" ? "You" : "SwooshAI"} •{" "}
                     {new Date(c.time).toLocaleTimeString()}
+                    {c.confidence != null && (
+                      <span className={`confidence-badge ${c.confidence >= 80 ? "confidence-high" : c.confidence >= 60 ? "confidence-medium" : "confidence-low"}`}>
+                        {c.confidence}% Confidence
+                      </span>
+                    )}
                   </div>
                   <ReactMarkdown>{c.text}</ReactMarkdown>
+                  {c.sources && c.sources.length > 0 && (
+                    <div className="sources">
+                      <span className="sources-label">Sources</span>
+                      {c.sources.map((s, j) => (
+                        <span key={j} className="source-tag">
+                          <FaFileAlt size={11} /> {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {c.followups && c.followups.length > 0 && (
+                    <div className="followups">
+                      {c.followups.map((q, j) => (
+                        <button key={j} className="followup-chip" onClick={() => sendMessage(q)}>
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
