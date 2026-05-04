@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 import ReactMarkdown from "react-markdown";
-import { FaMicrophone, FaMicrophoneSlash, FaPaperclip, FaPaperPlane, FaUserCircle, FaSun, FaMoon, FaFileAlt, FaSitemap, FaLightbulb, FaChartBar, FaSearch, FaEdit, FaColumns, FaDownload, FaTools, FaListUl, FaExclamationTriangle } from "react-icons/fa";
+import { FaMicrophone, FaMicrophoneSlash, FaPaperclip, FaPaperPlane, FaUserCircle, FaSun, FaMoon, FaFileAlt, FaSitemap, FaLightbulb, FaChartBar, FaSearch, FaEdit, FaColumns, FaDownload, FaTools, FaListUl, FaExclamationTriangle, FaChevronDown } from "react-icons/fa";
 
 function SwooshLogo({ className }) {
   return (
@@ -14,6 +14,45 @@ function SwooshLogo({ className }) {
       </defs>
       <path fill="url(#swooshGrad)" d="M42.741 71.477c-9.881 11.604-19.355 25.994-19.45 36.75-.037 4.047 1.255 7.58 4.354 10.256 4.46 3.854 9.374 5.213 14.264 5.221 7.146.01 14.242-2.873 19.798-5.096 9.357-3.742 112.79-48.659 112.79-48.659.998-.5.811-1.123-.438-.812-.504.126-112.603 30.505-112.603 30.505a24.771 24.771 0 0 1-6.524.934c-8.615.051-16.281-4.731-16.219-14.808.024-3.943 1.231-8.698 4.028-14.291z"/>
     </svg>
+  );
+}
+
+const formatSourceName = (filename) =>
+  filename
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const getFileExt = (filename) => {
+  const ext = (filename.split(".").pop() || "").toUpperCase();
+  return ["PDF", "DOCX", "TXT"].includes(ext) ? ext : "DOC";
+};
+
+function SourcesDropdown({ sources }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="sources">
+      <button className="sources-toggle" onClick={() => setOpen(!open)}>
+        <FaFileAlt size={11} />
+        <span>Referenced Documents</span>
+        <span className="sources-count">{sources.length}</span>
+        <FaChevronDown size={10} className={`sources-arrow${open ? " open" : ""}`} />
+      </button>
+      {open && (
+        <div className="sources-list">
+          {sources.map((s, j) => (
+            <div key={j} className="source-card">
+              <span className="source-number">{j + 1}</span>
+              <FaFileAlt size={13} className="source-card-icon" />
+              <span className="source-name">{formatSourceName(s)}</span>
+              <span className={`source-type source-type-${getFileExt(s).toLowerCase()}`}>
+                {getFileExt(s)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -427,27 +466,26 @@ function App() {
 
             {chat.map((c, i) => (
               <div key={i} className={`msg ${c.role}`}>
-                <div className="bubble">
-                  <div className="meta">
-                    {c.role === "user" ? "You" : "SwooshAI"} •{" "}
-                    {new Date(c.time).toLocaleTimeString()}
-                  </div>
-                  {c.confidence != null && (
-                    <span className={`confidence-badge ${c.confidence >= 80 ? "confidence-high" : c.confidence >= 60 ? "confidence-medium" : "confidence-low"}`}>
-                      {c.confidence}% Confidence
-                    </span>
-                  )}
-                  <ReactMarkdown components={markdownComponents}>{c.text}</ReactMarkdown>
-                  {c.sources && c.sources.length > 0 && (
-                    <div className="sources">
-                      <span className="sources-label">Sources</span>
-                      {c.sources.map((s, j) => (
-                        <span key={j} className="source-tag">
-                          <FaFileAlt size={11} /> {s}
-                        </span>
-                      ))}
+                <div className="msg-inner">
+                  <div className="bubble">
+                    <div className="meta">
+                      {c.role === "user" ? "You" : "SwooshAI"} •{" "}
+                      {new Date(c.time).toLocaleTimeString()}
                     </div>
-                  )}
+                    <ReactMarkdown components={markdownComponents}>{c.text}</ReactMarkdown>
+                    {c.confidence != null && (
+                      <div className="confidence-bar-wrap">
+                        <div className="confidence-bar-track">
+                          <div className={`confidence-bar-fill ${c.confidence >= 80 ? "confidence-high" : c.confidence >= 60 ? "confidence-medium" : "confidence-low"}`}
+                            style={{ width: `${c.confidence}%` }} />
+                        </div>
+                        <span className="confidence-pct">{c.confidence}%</span>
+                      </div>
+                    )}
+                    {c.sources && c.sources.length > 0 && (
+                      <SourcesDropdown sources={c.sources} />
+                    )}
+                  </div>
                   {c.followups && c.followups.length > 0 && (
                     <div className="followups">
                       {c.followups.map((q, j) => (
