@@ -1108,6 +1108,14 @@ button:hover {
   gap: 6px;
 }
 
+.confidence-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #9ca3af;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .confidence-bar-track {
   width: 56px;
   height: 4px;

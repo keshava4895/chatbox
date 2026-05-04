@@ -475,6 +475,7 @@ function App() {
                     <ReactMarkdown components={markdownComponents}>{c.text}</ReactMarkdown>
                     {c.confidence != null && (
                       <div className="confidence-bar-wrap">
+                        <span className="confidence-label">Confidence Score</span>
                         <div className="confidence-bar-track">
                           <div className={`confidence-bar-fill ${c.confidence >= 80 ? "confidence-high" : c.confidence >= 60 ? "confidence-medium" : "confidence-low"}`}
                             style={{ width: `${c.confidence}%` }} />
