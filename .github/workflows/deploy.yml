@@ -5,47 +5,54 @@ on:
     branches: [main]
 
 env:
-  ACR_NAME: chatboxacr
+  GHCR_OWNER: deeptivkulkarni
   RESOURCE_GROUP: chatbox-rg
   BACKEND_APP: chatbox-backend
-  FRONTEND_APP: nike-chatbox
+  FRONTEND_APP: chatbox-frontend
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        run: |
+          docker build -t ghcr.io/${{ env.GHCR_OWNER }}/chatbox-backend:${{ github.sha }} ./backend
+          docker push ghcr.io/${{ env.GHCR_OWNER }}/chatbox-backend:${{ github.sha }}
+
+      - name: Build and push frontend image
+        run: |
+          docker build -t ghcr.io/${{ env.GHCR_OWNER }}/chatbox-frontend:${{ github.sha }} ./frontend
+          docker push ghcr.io/${{ env.GHCR_OWNER }}/chatbox-frontend:${{ github.sha }}
 
       - name: Log in to Azure
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Log in to Azure Container Registry
-        run: az acr login --name ${{ env.ACR_NAME }}
-
-      - name: Build and push backend image
-        run: |
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/backend:${{ github.sha }} ./backend
-          docker push ${{ env.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
-
-      - name: Build and push frontend image
-        run: |
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }} ./frontend
-          docker push ${{ env.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }}
-
       - name: Deploy backend to Container Apps
         run: |
           az containerapp update \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
+            --image ghcr.io/${{ env.GHCR_OWNER }}/chatbox-backend:${{ github.sha }}
 
       - name: Deploy frontend to Container Apps
         run: |
           az containerapp update \
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }}
+            --image ghcr.io/${{ env.GHCR_OWNER }}/chatbox-frontend:${{ github.sha }}
