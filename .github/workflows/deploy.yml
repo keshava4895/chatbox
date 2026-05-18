@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 env:
-  GHCR_OWNER: deeptivkulkarni
+  GHCR_OWNER: keshava4895
   RESOURCE_GROUP: chatbox-rg
   BACKEND_APP: chatbox-backend
   FRONTEND_APP: chatbox-frontend
