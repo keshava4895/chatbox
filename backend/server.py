@@ -9,7 +9,12 @@ import zipfile
 import requests
 import os
 import io
+import re
+import base64
 import fitz
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ResourceExistsError
 from openai import AzureOpenAI
@@ -38,6 +43,9 @@ AZURE_OPENAI_KEY      = os.getenv("OPENAI_KEY")
 
 CHAT_MODEL            = os.getenv("CHAT_MODEL", "nike-gpt-4o")
 EMBED_MODEL           = os.getenv("EMBED_MODEL", "nike-text-embedding-3-large")  # ✅ 3-large deployment
+IMAGE_MODEL           = os.getenv("IMAGE_MODEL", "dall-e-3")
+IMAGE_ENDPOINT        = os.getenv("IMAGE_ENDPOINT")
+IMAGE_KEY             = os.getenv("IMAGE_KEY")
 
 API_VERSION           = "2024-12-01-preview"
 
@@ -57,6 +65,13 @@ client = AzureOpenAI(
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
     api_version=API_VERSION
 )
+
+# Separate client for image generation (chatbox-image-gen resource, swedencentral)
+image_client = AzureOpenAI(
+    api_key=IMAGE_KEY,
+    azure_endpoint=IMAGE_ENDPOINT,
+    api_version="2025-04-01-preview"
+) if IMAGE_KEY and IMAGE_ENDPOINT else None
 
 blob_service = BlobServiceClient.from_connection_string(AZURE_BLOB_CONN)
 
@@ -564,20 +579,156 @@ def generate_followups(question: str, context: str) -> list:
         print(f"Followup generation error: {e}")
         return []
 
+# ===================== LIST DOCS =====================
+
+def list_blob_files() -> list:
+    blob_service = BlobServiceClient.from_connection_string(AZURE_BLOB_CONN)
+    container_client = blob_service.get_container_client(CONTAINER_NAME)
+    return sorted(b.name for b in container_client.list_blobs())
+
+
+# ===================== CHART =====================
+
+def generate_chart(query: str, context: str) -> str:
+    """Ask GPT to extract chart data from context, render with matplotlib, return base64 PNG."""
+    extraction = client.chat.completions.create(
+        model=CHAT_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Extract chart data from the context. "
+                    "Return ONLY valid JSON in this exact format:\n"
+                    '{"chart_type": "bar" or "pie", "title": "...", "labels": [...], "values": [...]}\n'
+                    "Use numbers only for values. If no numeric data exists, return {\"error\": \"no data\"}."
+                )
+            },
+            {"role": "user", "content": f"Query: {query}\n\nContext:\n{context[:3000]}"}
+        ],
+        temperature=0
+    )
+    raw = extraction.choices[0].message.content.strip()
+    raw = re.sub(r"```json|```", "", raw).strip()
+    data = json.loads(raw)
+
+    if "error" in data:
+        raise ValueError("No numeric data found in documents to generate a chart.")
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if data.get("chart_type") == "pie":
+        ax.pie(data["values"], labels=data["labels"], autopct="%1.1f%%", startangle=140)
+        ax.set_title(data.get("title", "Chart"))
+    else:
+        ax.bar(data["labels"], data["values"], color="#7C3AED")
+        ax.set_title(data.get("title", "Chart"))
+        ax.set_ylabel("Value")
+        plt.xticks(rotation=30, ha="right")
+
+    plt.tight_layout()
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", dpi=150)
+    plt.close(fig)
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode("utf-8")
+
+
+# ===================== TRANSLATE =====================
+
+def extract_target_language(query: str) -> str:
+    q = query.lower()
+    for lang in ["spanish", "french", "german", "hindi", "japanese", "chinese", "portuguese", "arabic", "italian"]:
+        if lang in q:
+            return lang.capitalize()
+    return "Spanish"
+
+
+# ===================== IMAGE GENERATION =====================
+
+def build_image_prompt(query: str, context: str) -> str:
+    """Use GPT to craft a detailed DALL-E image prompt from query + document context."""
+    response = client.chat.completions.create(
+        model=CHAT_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an expert at writing DALL-E image generation prompts. "
+                    "Based on the user's request and the document context, craft a vivid, specific, visual prompt. "
+                    "Focus on subject, style, lighting, and composition. "
+                    "Return ONLY the prompt text, no explanation, max 400 characters."
+                )
+            },
+            {"role": "user", "content": f"Request: {query}\n\nContext:\n{context[:2000]}"}
+        ],
+        temperature=0.7,
+        max_tokens=200
+    )
+    return response.choices[0].message.content.strip()
+
+
+def generate_image(prompt: str) -> str:
+    """Generate an image via the chatbox-image-gen resource. Returns base64 PNG string."""
+    if not image_client:
+        raise ValueError("Image generation is not configured. Set IMAGE_KEY and IMAGE_ENDPOINT in .env.")
+    response = image_client.images.generate(
+        model=IMAGE_MODEL,
+        prompt=prompt,
+        n=1,
+        size="1024x1024",
+        response_format="b64_json"
+    )
+    return response.data[0].b64_json
+
+
+# ===================== DIAGRAM =====================
+
+def generate_diagram(query: str, context: str) -> str:
+    """Ask GPT-4o to produce a Mermaid.js diagram. Returns raw Mermaid code."""
+    response = client.chat.completions.create(
+        model=CHAT_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an expert at creating Mermaid.js diagrams. "
+                    "Based on the user's request and the provided context, generate a valid Mermaid diagram. "
+                    "Choose the most appropriate type: flowchart TD, sequenceDiagram, graph LR, or classDiagram. "
+                    "Return ONLY the raw Mermaid code — no markdown fences, no backticks, no explanation."
+                )
+            },
+            {"role": "user", "content": f"Request: {query}\n\nContext:\n{context[:3000]}"}
+        ],
+        temperature=0
+    )
+    code = response.choices[0].message.content.strip()
+    code = re.sub(r"^```(?:mermaid)?\n?", "", code)
+    code = re.sub(r"\n?```$", "", code)
+    return code.strip()
+
+
 # ===================== CHAT =====================
 
 _DIAGRAM_KEYWORDS = {"draw a diagram", "create a diagram", "flow diagram", "flowchart", "flow chart", "sequence diagram", "architecture diagram", "draw a flow", "create a flow", "draw the architecture", "show the architecture"}
 _IMAGE_KEYWORDS = {"generate an image", "create an image", "make an image", "draw an image", "show an image", "produce an image", "generate image", "create image", "draw a picture", "make a picture"}
+_CHART_KEYWORDS = {"create a chart", "generate a chart", "create a graph", "generate a graph", "make a chart", "make a graph", "bar chart", "pie chart", "visualize data", "chart the data", "plot the data"}
+_TABLE_KEYWORDS = {"in a table", "as a table", "summarize in a table", "table format", "show as table", "return a table", "html table"}
+_LIST_DOCS_KEYWORDS = {"what documents", "what files", "list documents", "list files", "which documents", "which files", "what have i uploaded", "documents do i have", "files do i have"}
+_TRANSLATE_KEYWORDS = {"translate", "in spanish", "in french", "in german", "in hindi", "in japanese", "in chinese", "in portuguese", "in arabic", "in italian"}
 
 def detect_intent(question: str) -> str:
     q = question.lower()
 
-    # Diagrams always search documents first
+    # Fast keyword shortcuts
+    if any(k in q for k in _LIST_DOCS_KEYWORDS):
+        return "LIST_DOCS"
     if any(k in q for k in _DIAGRAM_KEYWORDS):
         return "DIAGRAM"
-
-    # All image requests search documents first (IMAGE_RAG)
-    # Plain IMAGE is only used if explicitly no-document context is needed
+    if any(k in q for k in _CHART_KEYWORDS):
+        return "CHART"
+    if any(k in q for k in _TABLE_KEYWORDS):
+        return "TABLE"
+    if any(k in q for k in _TRANSLATE_KEYWORDS):
+        return "TRANSLATE"
     if any(k in q for k in _IMAGE_KEYWORDS):
         return "IMAGE_RAG"
 
@@ -587,24 +738,18 @@ def detect_intent(question: str) -> str:
             {
                 "role": "system",
                 "content": """
-You are an intent classifier.
+You are an intent classifier. Return ONLY one word — the FIRST matching category:
 
-PRIORITY ORDER — check from top to bottom and return the FIRST match:
+1. LIST_DOCS  → user asks what files/documents are uploaded or available
+2. DIAGRAM    → user wants a flowchart, sequence diagram, or architecture diagram
+3. CHART      → user wants a bar chart, pie chart, or data visualization
+4. TABLE      → user wants output formatted as a table
+5. TRANSLATE  → user wants content translated to another language
+6. IMAGE_RAG  → user wants an image generated from document content
+7. RAG        → user wants a text answer from internal documents
+8. GENERAL    → greetings, capability questions, casual chat
 
-1. DIAGRAM → user wants a visual diagram, flowchart, or architecture drawing
-   - Examples: "draw a flow diagram of X", "create a flowchart for X", "show X as a diagram"
-
-2. IMAGE_RAG → user wants to generate an image of any topic (always search documents first)
-   - Examples: "generate an image of X", "create an image of X", "draw X", "visualize X"
-   - Use this for ALL image generation requests regardless of topic
-
-3. RAG → user wants a text answer from internal documents (no visual output)
-   - Examples: "what does the document say about X", "explain X", "summarize X"
-
-4. GENERAL → greetings, capability questions, casual chat
-   - Examples: "what can you do", "hello", "what is your name"
-
-Respond with ONLY one word: GENERAL, RAG, IMAGE_RAG, or DIAGRAM
+Respond with ONLY one word: LIST_DOCS, DIAGRAM, CHART, TABLE, TRANSLATE, IMAGE_RAG, RAG, or GENERAL
 """
             },
             {"role": "user", "content": question}
@@ -613,7 +758,7 @@ Respond with ONLY one word: GENERAL, RAG, IMAGE_RAG, or DIAGRAM
     )
 
     intent = response.choices[0].message.content.strip().upper()
-    if intent not in {"GENERAL", "RAG", "IMAGE", "IMAGE_RAG", "DIAGRAM"}:
+    if intent not in {"GENERAL", "RAG", "IMAGE", "IMAGE_RAG", "DIAGRAM", "CHART", "TABLE", "TRANSLATE", "LIST_DOCS"}:
         intent = "RAG"
     return intent
 
@@ -624,11 +769,11 @@ async def chat(query: Query):
         #  STEP 1 — Detect intent
         intent = detect_intent(query.message)
 
-        #  STEP 2 — Search docs for RAG, IMAGE_RAG, and DIAGRAM
+        #  STEP 2 — Search docs for all document-grounded intents
         context = ""
         sources = []
         confidence = 0
-        if intent in ("RAG", "IMAGE_RAG", "DIAGRAM"):
+        if intent in ("RAG", "IMAGE_RAG", "DIAGRAM", "CHART", "TABLE", "TRANSLATE"):
             results = search(query.message)
             context = "\n\n".join(r["content"] for r in results)
             top_scores = [r.get("score", 0) for r in results[:3]]
@@ -639,6 +784,23 @@ async def chat(query: Query):
                 if fn and fn not in seen:
                     sources.append(fn)
                     seen.add(fn)
+
+        #  STEP 2a — Handle LIST_DOCS
+        if intent == "LIST_DOCS":
+            def stream_list_docs():
+                try:
+                    files = list_blob_files()
+                    if not files:
+                        yield "No documents found in blob storage. Upload files using the 📎 button."
+                        return
+                    lines = [f"You have **{len(files)}** document(s) uploaded:\n"]
+                    for i, f in enumerate(files, 1):
+                        lines.append(f"{i}. {f}")
+                    yield "\n".join(lines)
+                except Exception as e:
+                    print(f"List docs error: {e}")
+                    yield "⚠️ Could not retrieve document list."
+            return StreamingResponse(stream_list_docs(), media_type="text/plain")
 
         #  STEP 2b — Handle IMAGE_RAG
         if intent == "IMAGE_RAG":
@@ -681,6 +843,81 @@ async def chat(query: Query):
                     print(f"Diagram error: {e}")
                     yield "⚠️ Sorry, I couldn't generate that diagram."
             return StreamingResponse(stream_diagram(), media_type="text/plain")
+
+        #  STEP 2e — Handle CHART
+        if intent == "CHART":
+            def stream_chart():
+                try:
+                    if not context.strip():
+                        yield "⚠️ No relevant content found in the uploaded documents to generate a chart."
+                        return
+                    chart_b64 = generate_chart(query.message, context)
+                    yield f"\x00IMAGE\x00{chart_b64}"
+                except ValueError as e:
+                    yield f"⚠️ {e}"
+                except Exception as e:
+                    print(f"Chart error: {e}")
+                    yield "⚠️ Sorry, I couldn't generate that chart."
+            return StreamingResponse(stream_chart(), media_type="text/plain")
+
+        #  STEP 2f — Handle TABLE
+        if intent == "TABLE":
+            def stream_table():
+                try:
+                    if not context.strip():
+                        yield "⚠️ No relevant content found in the uploaded documents."
+                        return
+                    response = client.chat.completions.create(
+                        model=CHAT_MODEL,
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": (
+                                    "You are a data extraction assistant. "
+                                    "Using ONLY the provided context, produce a clean HTML table. "
+                                    "Output ONLY the <table> HTML — no markdown, no explanation, no extra text. "
+                                    "Use <thead> and <tbody>. Add border=1 and cellpadding=6 to the table tag."
+                                )
+                            },
+                            {"role": "user", "content": f"Request: {query.message}\n\nContext:\n{context[:4000]}"}
+                        ],
+                        temperature=0
+                    )
+                    html = response.choices[0].message.content.strip()
+                    yield f"\x00TABLE\x00{html}"
+                except Exception as e:
+                    print(f"Table error: {e}")
+                    yield "⚠️ Sorry, I couldn't generate that table."
+            return StreamingResponse(stream_table(), media_type="text/plain")
+
+        #  STEP 2g — Handle TRANSLATE
+        if intent == "TRANSLATE":
+            def stream_translate():
+                try:
+                    target_lang = extract_target_language(query.message)
+                    doc_context = f"\n\nDocument context:\n{context[:4000]}" if context.strip() else ""
+                    response = client.chat.completions.create(
+                        model=CHAT_MODEL,
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": (
+                                    f"You are a professional translator. Translate the user's request into {target_lang}. "
+                                    f"If document context is provided, translate or summarize the relevant content in {target_lang}. "
+                                    "Output ONLY the translated text."
+                                )
+                            },
+                            {"role": "user", "content": f"{query.message}{doc_context}"}
+                        ],
+                        stream=True
+                    )
+                    for chunk in response:
+                        if chunk.choices and chunk.choices[0].delta.content:
+                            yield chunk.choices[0].delta.content
+                except Exception as e:
+                    print(f"Translate error: {e}")
+                    yield "⚠️ Sorry, I couldn't translate that."
+            return StreamingResponse(stream_translate(), media_type="text/plain")
 
         #  STEP 3 — Decide mode
         if intent == "GENERAL" or not context.strip():
