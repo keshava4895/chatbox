@@ -566,7 +566,21 @@ def generate_followups(question: str, context: str) -> list:
 
 # ===================== CHAT =====================
 
+_DIAGRAM_KEYWORDS = {"draw a diagram", "create a diagram", "flow diagram", "flowchart", "flow chart", "sequence diagram", "architecture diagram", "draw a flow", "create a flow", "draw the architecture", "show the architecture"}
+_IMAGE_KEYWORDS = {"generate an image", "create an image", "make an image", "draw an image", "show an image", "produce an image", "generate image", "create image", "draw a picture", "make a picture"}
+
 def detect_intent(question: str) -> str:
+    q = question.lower()
+
+    # Diagrams always search documents first
+    if any(k in q for k in _DIAGRAM_KEYWORDS):
+        return "DIAGRAM"
+
+    # All image requests search documents first (IMAGE_RAG)
+    # Plain IMAGE is only used if explicitly no-document context is needed
+    if any(k in q for k in _IMAGE_KEYWORDS):
+        return "IMAGE_RAG"
+
     response = client.chat.completions.create(
         model=CHAT_MODEL,
         messages=[
@@ -575,21 +589,22 @@ def detect_intent(question: str) -> str:
                 "content": """
 You are an intent classifier.
 
-Classify the user query into ONLY one of these categories:
-1. GENERAL → greetings, personal, casual, generic knowledge, questions not needing documents
-2. RAG → requires internal documents, technical, enterprise-specific questions (text answer)
-3. IMAGE → generate a creative image with no document context needed (e.g. "draw a shoe", "create an image of...")
-4. IMAGE_RAG → generate an image based on content from uploaded documents (e.g. "show me what the product looks like", "create an image based on the document", "visualize the product described")
-5. DIAGRAM → draw a flowchart, sequence diagram, architecture diagram, or any process flow (e.g. "draw a diagram", "create a flowchart", "show the architecture as a diagram")
+PRIORITY ORDER — check from top to bottom and return the FIRST match:
 
-Rules:
-- If the query contains words like "draw", "diagram", "flowchart", "sequence diagram", "architecture diagram" → DIAGRAM
-- If the query asks to generate/create/show an image AND references documents/products/uploaded files → IMAGE_RAG
-- If the query asks to generate/create/draw an image WITHOUT referencing documents → IMAGE
-- If the query is about internal systems, data, or technical topics requiring document lookup → RAG
-- Otherwise → GENERAL
+1. DIAGRAM → user wants a visual diagram, flowchart, or architecture drawing
+   - Examples: "draw a flow diagram of X", "create a flowchart for X", "show X as a diagram"
 
-Respond with ONLY one word: GENERAL, RAG, IMAGE, IMAGE_RAG, or DIAGRAM
+2. IMAGE_RAG → user wants to generate an image of any topic (always search documents first)
+   - Examples: "generate an image of X", "create an image of X", "draw X", "visualize X"
+   - Use this for ALL image generation requests regardless of topic
+
+3. RAG → user wants a text answer from internal documents (no visual output)
+   - Examples: "what does the document say about X", "explain X", "summarize X"
+
+4. GENERAL → greetings, capability questions, casual chat
+   - Examples: "what can you do", "hello", "what is your name"
+
+Respond with ONLY one word: GENERAL, RAG, IMAGE_RAG, or DIAGRAM
 """
             },
             {"role": "user", "content": question}
