@@ -576,10 +576,20 @@ def detect_intent(question: str) -> str:
 You are an intent classifier.
 
 Classify the user query into ONLY one of these categories:
-1. GENERAL → greetings, personal, casual, generic knowledge
-2. RAG → requires internal documents, technical, enterprise-specific
+1. GENERAL → greetings, personal, casual, generic knowledge, questions not needing documents
+2. RAG → requires internal documents, technical, enterprise-specific questions (text answer)
+3. IMAGE → generate a creative image with no document context needed (e.g. "draw a shoe", "create an image of...")
+4. IMAGE_RAG → generate an image based on content from uploaded documents (e.g. "show me what the product looks like", "create an image based on the document", "visualize the product described")
+5. DIAGRAM → draw a flowchart, sequence diagram, architecture diagram, or any process flow (e.g. "draw a diagram", "create a flowchart", "show the architecture as a diagram")
 
-Respond with ONLY one word: GENERAL or RAG
+Rules:
+- If the query contains words like "draw", "diagram", "flowchart", "sequence diagram", "architecture diagram" → DIAGRAM
+- If the query asks to generate/create/show an image AND references documents/products/uploaded files → IMAGE_RAG
+- If the query asks to generate/create/draw an image WITHOUT referencing documents → IMAGE
+- If the query is about internal systems, data, or technical topics requiring document lookup → RAG
+- Otherwise → GENERAL
+
+Respond with ONLY one word: GENERAL, RAG, IMAGE, IMAGE_RAG, or DIAGRAM
 """
             },
             {"role": "user", "content": question}
@@ -588,6 +598,8 @@ Respond with ONLY one word: GENERAL or RAG
     )
 
     intent = response.choices[0].message.content.strip().upper()
+    if intent not in {"GENERAL", "RAG", "IMAGE", "IMAGE_RAG", "DIAGRAM"}:
+        intent = "RAG"
     return intent
 
 
