@@ -1,13 +1,15 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel, Field
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 import hashlib
 import json
+import zipfile
 import requests
 import os
 import io
+import fitz
 from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ResourceExistsError
 from openai import AzureOpenAI
@@ -286,6 +288,7 @@ def bulk_index():
             })
 
         print(f"  ✅ {blob.name}: {len(chunks)} chunks")
+        extract_and_store_images(blob.name, content)
 
     print(f"Total chunks to index: {len(all_docs)}")
 
@@ -305,6 +308,83 @@ def bulk_index():
             print(f"  ❌ Batch error: {res.text}")
 
     print("✅ Bulk indexing from Blob Storage complete!")
+
+# ===================== IMAGE EXTRACTION =====================
+
+IMAGES_FOLDER = "doc-images"
+
+def extract_and_store_images(filename: str, content: bytes) -> int:
+    """Extract images from PDF/DOCX and store in blob. Returns count stored."""
+    stored = 0
+    try:
+        if filename.lower().endswith(".pdf"):
+            doc = fitz.open(stream=content, filetype="pdf")
+            img_idx = 0
+            for page_num in range(len(doc)):
+                for img in doc.get_page_images(page_num, full=True):
+                    xref = img[0]
+                    base = doc.extract_image(xref)
+                    img_bytes = base["image"]
+                    ext = base["ext"]
+                    w, h = base.get("width", 0), base.get("height", 0)
+                    if w < 100 or h < 100 or len(img_bytes) < 5000:
+                        continue
+                    blob_name = f"{IMAGES_FOLDER}/{filename}/img_{img_idx}.{ext}"
+                    blob_service.get_blob_client(container=CONTAINER_NAME, blob=blob_name).upload_blob(img_bytes, overwrite=True)
+                    img_idx += 1
+                    stored += 1
+                    if stored >= 10:
+                        break
+                if stored >= 10:
+                    break
+            doc.close()
+
+        elif filename.lower().endswith(".docx"):
+            with zipfile.ZipFile(io.BytesIO(content)) as z:
+                media_files = [n for n in z.namelist() if n.startswith("word/media/")]
+                for idx, media_name in enumerate(media_files[:10]):
+                    img_bytes = z.read(media_name)
+                    if len(img_bytes) < 5000:
+                        continue
+                    ext = media_name.rsplit(".", 1)[-1].lower()
+                    if ext not in ("png", "jpg", "jpeg", "gif", "webp"):
+                        continue
+                    blob_name = f"{IMAGES_FOLDER}/{filename}/img_{idx}.{ext}"
+                    blob_service.get_blob_client(container=CONTAINER_NAME, blob=blob_name).upload_blob(img_bytes, overwrite=True)
+                    stored += 1
+
+        print(f"  🖼️ Stored {stored} images for {filename}")
+    except Exception as e:
+        print(f"  ⚠️ Image extraction error for {filename}: {e}")
+    return stored
+
+
+def get_images_for_sources(source_filenames: list) -> list:
+    """Return up to 3 images from the FIRST source file (in score order) that has images.
+    Never mixes images across multiple documents."""
+    try:
+        container_client = blob_service.get_container_client(CONTAINER_NAME)
+        for filename in source_filenames:
+            prefix = f"{IMAGES_FOLDER}/{filename}/"
+            blobs = list(container_client.list_blobs(name_starts_with=prefix))
+            if blobs:
+                return [f"/image/{blob.name}" for blob in blobs[:3]]
+    except Exception as e:
+        print(f"Image lookup error: {e}")
+    return []
+
+
+@app.get("/image/{blob_path:path}")
+async def serve_image(blob_path: str):
+    """Proxy endpoint — serves images from Azure Blob Storage."""
+    try:
+        content = blob_service.get_blob_client(container=CONTAINER_NAME, blob=blob_path).download_blob().readall()
+        ext = blob_path.rsplit(".", 1)[-1].lower()
+        media_type = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp"}.get(ext, "image/png")
+        return Response(content=content, media_type=media_type)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Image not found")
+
 
 # ===================== UPLOAD =====================
 
@@ -353,7 +433,11 @@ async def upload(file: UploadFile = File(...)):
             raise HTTPException(status_code=500, detail=f"Indexing failed: {res.text}")
 
         print(f"✅ Indexed {len(docs)} chunks for {file.filename}")
-        return {"status": "uploaded", "file": file.filename, "chunks": len(docs)}
+
+        # 5. Extract and store images
+        images_stored = extract_and_store_images(file.filename, content)
+
+        return {"status": "uploaded", "file": file.filename, "chunks": len(docs), "images": images_stored}
 
     except HTTPException:
         raise
@@ -634,6 +718,10 @@ CONTEXT
                     yield f"\x00SOURCES\x00{json.dumps(sources)}"
 
                 if intent == "RAG" and context.strip():
+                    images = get_images_for_sources(sources)
+                    if images:
+                        yield f"\x00IMAGES\x00{json.dumps(images)}"
+
                     yield f"\x00CONFIDENCE\x00{confidence}"
                     followups = generate_followups(query.message, context)
                     if followups:

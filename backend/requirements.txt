@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 PyPDF2
+PyMuPDF
 python-docx
 azure-storage-blob
 azure-search-documents

@@ -1,7 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 import ReactMarkdown from "react-markdown";
-import { FaMicrophone, FaMicrophoneSlash, FaPaperclip, FaPaperPlane, FaUserCircle, FaSun, FaMoon, FaFileAlt, FaSitemap, FaLightbulb, FaChartBar, FaSearch, FaEdit, FaColumns, FaDownload, FaTools, FaListUl, FaExclamationTriangle, FaChevronDown } from "react-icons/fa";
+import { FaMicrophone, FaMicrophoneSlash, FaPaperclip, FaPaperPlane, FaUserCircle, FaSun, FaMoon, FaFileAlt, FaSitemap, FaLightbulb, FaChartBar, FaSearch, FaEdit, FaColumns, FaDownload, FaTools, FaListUl, FaExclamationTriangle, FaChevronDown, FaTimes } from "react-icons/fa";
+
+function QLogoAnimated({ className }) {
+  return (
+    <svg className={`qlogo ${className || ""}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 241 230">
+      <path className="q-body" d="M0 0 C0.89871826 -0.00161133 1.79743652 -0.00322266 2.72338867 -0.00488281 C23.4686448 0.33943679 43.92507844 8.94166605 59.5625 22.375 C60.34882813 23.04917969 61.13515625 23.72335938 61.9453125 24.41796875 C76.89606665 38.30081189 87.82015589 59.88351698 88.6875 80.3203125 C89.04138373 99.73968195 85.68211753 116.26010135 76.5625 133.375 C75.9025 133.375 75.2425 133.375 74.5625 133.375 C74.31495468 132.61459915 74.06740936 131.8541983 73.81236267 131.070755 C71.45761403 123.84506756 69.09082955 116.62348183 66.71100521 109.40601826 C65.48842623 105.69683555 64.27027832 101.9863273 63.06274414 98.2722168 C61.89350213 94.67646938 60.71198674 91.08495719 59.52246284 87.49587059 C59.07457052 86.13760632 58.63084585 84.77795917 58.19172478 83.41683388 C52.1021571 64.56706124 43.69749007 48.48817835 25.69140625 38.8359375 C17.30811116 34.85939531 9.54952827 32.98120454 0.3125 33 C-0.51870361 33.00161133 -1.34990723 33.00322266 -2.20629883 33.00488281 C-9.18263964 33.14296116 -15.05151882 34.50680501 -21.4375 37.375 C-22.14777344 37.65214844 -22.85804687 37.92929687 -23.58984375 38.21484375 C-34.90792838 43.07825833 -45.25092299 54.55273782 -50.37109375 65.62109375 C-56.18368277 80.63162583 -56.14069176 96.08982823 -49.9609375 110.91796875 C-41.93368476 128.53024749 -28.92203838 136.48561841 -11.4375 143.375 C-6.91602912 145.00206969 -2.36135113 146.51792203 2.203125 148.01953125 C4.07541779 148.64150642 4.07541779 148.64150642 5.98553467 149.27604675 C9.25886992 150.36339161 12.53397104 151.44531362 15.80950928 152.52600098 C19.16969276 153.63572059 22.52812372 154.75071855 25.88671875 155.86523438 C32.44363509 158.04023904 39.00243773 160.2095029 45.5625 162.375 C45.5625 163.035 45.5625 163.695 45.5625 164.375 C24.02786021 175.84966208 -0.52792924 180.28861082 -24.4375 173.375 C-46.79493315 166.0554626 -66.13258397 151.26289121 -77.4375 130.375 C-88.42234546 106.90661019 -90.51929303 82.9566481 -82.8203125 57.94921875 C-74.23954474 35.77011565 -58.04626398 19.62664581 -37.4375 8.375 C-36.65890625 7.94316406 -35.8803125 7.51132812 -35.078125 7.06640625 C-24.17878692 1.63785996 -12.02118509 0.02036971 0 0 Z " transform="translate(116.4375,24.625)" />
+      <path className="q-accent" d="M0 0 C1.86198405 2.79297608 2.54267391 4.50856891 3.3671875 7.68359375 C3.61339844 8.61236328 3.85960937 9.54113281 4.11328125 10.49804688 C4.36464844 11.46806641 4.61601562 12.43808594 4.875 13.4375 C6.40677668 19.31741524 8.00400615 25.12953348 9.96484375 30.8828125 C12.15581126 37.32963499 13.94471152 43.85742932 15.6875 50.4375 C15.99494141 51.58154297 16.30238281 52.72558594 16.61914062 53.90429688 C17.86996188 58.58734977 19.09419789 63.23625247 20 68 C12.96777215 66.73988981 6.24438248 64.96664498 -0.5625 62.8125 C-10.13052022 59.83939082 -19.74110266 57.06478903 -29.39868164 54.39770508 C-35.62413695 52.67664327 -41.82203478 50.88471661 -48 49 C-45.31424948 47.20949966 -42.86828652 46.15138386 -39.86010742 45.04785156 C-32.57002865 42.34735749 -26.75933851 39.33272084 -21 34 C-20.18015625 33.29359375 -19.3603125 32.5871875 -18.515625 31.859375 C-9.10591361 23.24806337 -3.43040856 12.22083049 0 0 Z " transform="translate(159,107)" />
+    </svg>
+  );
+}
 
 function SwooshLogo({ className }) {
   return (
@@ -90,6 +99,7 @@ function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [lightbox, setLightbox] = useState(null);
 
   const toggleRecording = () => {
     setIsRecording((prev) => !prev);
@@ -100,6 +110,13 @@ function App() {
     if (showMenu) document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [showMenu]);
+
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e) => { if (e.key === "Escape") setLightbox(null); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
 
   const chatEndRef = useRef(null);
@@ -252,9 +269,10 @@ function App() {
       const decoder = new TextDecoder("utf-8");
 
       let botText = "";
-      const SOURCES_SEP = "\x00SOURCES\x00";
+      const SOURCES_SEP    = "\x00SOURCES\x00";
+      const IMAGES_SEP     = "\x00IMAGES\x00";
       const CONFIDENCE_SEP = "\x00CONFIDENCE\x00";
-      const FOLLOWUPS_SEP = "\x00FOLLOWUPS\x00";
+      const FOLLOWUPS_SEP  = "\x00FOLLOWUPS\x00";
 
       const parseSentinel = (text, sep) => {
         const idx = text.indexOf(sep);
@@ -288,18 +306,21 @@ function App() {
 
       // Parse all sentinels from the end of the stream
       let sources = [];
+      let images = [];
       let confidence = null;
       let followups = [];
-      try { const r = parseSentinel(botText, SOURCES_SEP);   if (r) sources   = JSON.parse(r); } catch {}
+      try { const r = parseSentinel(botText, SOURCES_SEP);    if (r) sources    = JSON.parse(r); } catch {}
+      try { const r = parseSentinel(botText, IMAGES_SEP);     if (r) images     = JSON.parse(r); } catch {}
       try { const r = parseSentinel(botText, CONFIDENCE_SEP); if (r) confidence = parseInt(r, 10); } catch {}
       try { const r = parseSentinel(botText, FOLLOWUPS_SEP);  if (r) followups  = JSON.parse(r); } catch {}
 
-      if (sources.length > 0 || confidence !== null || followups.length > 0) {
+      if (sources.length > 0 || images.length > 0 || confidence !== null || followups.length > 0) {
         setChat((prev) => {
           const updated = [...prev];
           const msg = { ...updated[updated.length - 1] };
-          if (sources.length > 0)  msg.sources    = sources;
-          if (confidence !== null) msg.confidence = confidence;
+          if (sources.length > 0)   msg.sources    = sources;
+          if (images.length > 0)    msg.images     = images;
+          if (confidence !== null)  msg.confidence = confidence;
           if (followups.length > 0) msg.followups  = followups;
           updated[updated.length - 1] = msg;
           return updated;
@@ -435,7 +456,7 @@ function App() {
             <h3 className="title">Your assistant</h3>
             <div className="top-right">
               <div className="quadrant-block">
-                <img src="/Qlogo.svg" className="logo quadrant-logo" />
+                <QLogoAnimated className="logo quadrant-logo" />
                 <div className="quadrant-tagline">Powered By Quadrant</div>
               </div>
             </div>
@@ -473,6 +494,28 @@ function App() {
                       {new Date(c.time).toLocaleTimeString()}
                     </div>
                     <ReactMarkdown components={markdownComponents}>{c.text}</ReactMarkdown>
+                    {c.images && c.images.length > 0 && (
+                      <div className="image-gallery">
+                        <div className="image-gallery-header">
+                          <FaFileAlt size={11} />
+                          <span>Referenced Images</span>
+                          <span className="image-gallery-count">{c.images.length}</span>
+                        </div>
+                        <div className="image-grid">
+                          {c.images.map((url, j) => (
+                            <div key={j} className="image-card" onClick={() => setLightbox(`/api${url}`)}>
+                              <div className="image-card-inner">
+                                <img src={`/api${url}`} alt={`Reference ${j + 1}`} />
+                                <div className="image-card-overlay">
+                                  <span>View Full Size</span>
+                                </div>
+                              </div>
+                              <div className="image-card-label">Figure {j + 1}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {c.confidence != null && (
                       <div className="confidence-bar-wrap">
                         <span className="confidence-label">Confidence Score</span>
@@ -596,6 +639,19 @@ function App() {
         </div>
       )}
 
+      {lightbox && (
+        <div className="lightbox-overlay" onClick={() => setLightbox(null)}>
+          <button className="lightbox-close" onClick={() => setLightbox(null)}>
+            <FaTimes size={18} />
+          </button>
+          <img
+            className="lightbox-img"
+            src={lightbox}
+            alt="Full size"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
