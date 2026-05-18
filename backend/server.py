@@ -624,11 +624,11 @@ async def chat(query: Query):
         #  STEP 1 — Detect intent
         intent = detect_intent(query.message)
 
-        #  STEP 2 — Only search if RAG
+        #  STEP 2 — Search docs for RAG, IMAGE_RAG, and DIAGRAM
         context = ""
         sources = []
         confidence = 0
-        if intent == "RAG":
+        if intent in ("RAG", "IMAGE_RAG", "DIAGRAM"):
             results = search(query.message)
             context = "\n\n".join(r["content"] for r in results)
             top_scores = [r.get("score", 0) for r in results[:3]]
@@ -639,6 +639,48 @@ async def chat(query: Query):
                 if fn and fn not in seen:
                     sources.append(fn)
                     seen.add(fn)
+
+        #  STEP 2b — Handle IMAGE_RAG
+        if intent == "IMAGE_RAG":
+            def stream_image_rag():
+                try:
+                    if not context.strip():
+                        yield "⚠️ No relevant content found in the uploaded documents to base the image on."
+                        return
+                    image_prompt = build_image_prompt(query.message, context)
+                    print(f"Image prompt: {image_prompt}")
+                    image_b64 = generate_image(image_prompt)
+                    yield f"\x00IMAGE\x00{image_b64}"
+                except Exception as e:
+                    print(f"Image RAG error: {e}")
+                    yield "⚠️ Sorry, I couldn't generate that image."
+            return StreamingResponse(stream_image_rag(), media_type="text/plain")
+
+        #  STEP 2c — Handle IMAGE (plain creative)
+        if intent == "IMAGE":
+            def stream_image():
+                try:
+                    image_b64 = generate_image(query.message)
+                    yield f"\x00IMAGE\x00{image_b64}"
+                except Exception as e:
+                    print(f"Image generation error: {e}")
+                    yield "⚠️ Sorry, I couldn't generate that image."
+            return StreamingResponse(stream_image(), media_type="text/plain")
+
+        #  STEP 2d — Handle DIAGRAM
+        if intent == "DIAGRAM":
+            def stream_diagram():
+                try:
+                    if not context.strip():
+                        yield "⚠️ No relevant content found in the uploaded documents to generate a diagram."
+                        return
+                    diagram_code = generate_diagram(query.message, context)
+                    print(f"Diagram code: {diagram_code}")
+                    yield f"\x00DIAGRAM\x00{diagram_code}"
+                except Exception as e:
+                    print(f"Diagram error: {e}")
+                    yield "⚠️ Sorry, I couldn't generate that diagram."
+            return StreamingResponse(stream_diagram(), media_type="text/plain")
 
         #  STEP 3 — Decide mode
         if intent == "GENERAL" or not context.strip():
