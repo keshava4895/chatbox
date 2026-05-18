@@ -86,6 +86,32 @@ const markdownComponents = {
   },
 };
 
+function MermaidDiagram({ code }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!ref.current || !code) return;
+    let cancelled = false;
+    const render = async () => {
+      try {
+        const mermaid = (await import("mermaid")).default;
+        mermaid.initialize({ startOnLoad: false, theme: "default" });
+        const id = `mermaid-${Math.random().toString(36).slice(2)}`;
+        const { svg } = await mermaid.render(id, code);
+        if (!cancelled && ref.current) ref.current.innerHTML = svg;
+      } catch {
+        if (!cancelled && ref.current) {
+          ref.current.innerHTML = `<pre class="diagram-fallback">${code}</pre>`;
+        }
+      }
+    };
+    render();
+    return () => { cancelled = true; };
+  }, [code]);
+
+  return <div className="mermaid-diagram" ref={ref} />;
+}
+
 function App() {
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
@@ -273,6 +299,9 @@ function App() {
       const IMAGES_SEP     = "\x00IMAGES\x00";
       const CONFIDENCE_SEP = "\x00CONFIDENCE\x00";
       const FOLLOWUPS_SEP  = "\x00FOLLOWUPS\x00";
+      const IMAGE_SEP      = "\x00IMAGE\x00";
+      const DIAGRAM_SEP    = "\x00DIAGRAM\x00";
+      const TABLE_SEP      = "\x00TABLE\x00";
 
       const parseSentinel = (text, sep) => {
         const idx = text.indexOf(sep);
@@ -309,12 +338,18 @@ function App() {
       let images = [];
       let confidence = null;
       let followups = [];
+      let imageData = null;
+      let diagramCode = null;
+      let tableHtml = null;
       try { const r = parseSentinel(botText, SOURCES_SEP);    if (r) sources    = JSON.parse(r); } catch {}
       try { const r = parseSentinel(botText, IMAGES_SEP);     if (r) images     = JSON.parse(r); } catch {}
       try { const r = parseSentinel(botText, CONFIDENCE_SEP); if (r) confidence = parseInt(r, 10); } catch {}
       try { const r = parseSentinel(botText, FOLLOWUPS_SEP);  if (r) followups  = JSON.parse(r); } catch {}
+      try { const idx = botText.indexOf(IMAGE_SEP);   if (idx !== -1) imageData   = botText.slice(idx + IMAGE_SEP.length); } catch {}
+      try { const idx = botText.indexOf(DIAGRAM_SEP); if (idx !== -1) diagramCode = botText.slice(idx + DIAGRAM_SEP.length); } catch {}
+      try { const idx = botText.indexOf(TABLE_SEP);   if (idx !== -1) tableHtml   = botText.slice(idx + TABLE_SEP.length); } catch {}
 
-      if (sources.length > 0 || images.length > 0 || confidence !== null || followups.length > 0) {
+      if (sources.length > 0 || images.length > 0 || confidence !== null || followups.length > 0 || imageData || diagramCode || tableHtml) {
         setChat((prev) => {
           const updated = [...prev];
           const msg = { ...updated[updated.length - 1] };
@@ -322,6 +357,9 @@ function App() {
           if (images.length > 0)    msg.images     = images;
           if (confidence !== null)  msg.confidence = confidence;
           if (followups.length > 0) msg.followups  = followups;
+          if (imageData)            msg.imageData  = imageData;
+          if (diagramCode)          msg.diagramCode = diagramCode;
+          if (tableHtml)            msg.tableHtml  = tableHtml;
           updated[updated.length - 1] = msg;
           return updated;
         });
@@ -494,6 +532,15 @@ function App() {
                       {new Date(c.time).toLocaleTimeString()}
                     </div>
                     <ReactMarkdown components={markdownComponents}>{c.text}</ReactMarkdown>
+                    {c.imageData && (
+                      <div className="generated-image-wrap">
+                        <img src={`data:image/png;base64,${c.imageData}`} alt="Generated" className="generated-image" />
+                      </div>
+                    )}
+                    {c.diagramCode && <MermaidDiagram code={c.diagramCode} />}
+                    {c.tableHtml && (
+                      <div className="generated-table" dangerouslySetInnerHTML={{ __html: c.tableHtml }} />
+                    )}
                     {c.images && c.images.length > 0 && (
                       <div className="image-gallery">
                         <div className="image-gallery-header">
