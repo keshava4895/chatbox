@@ -815,7 +815,7 @@ async def chat(query: Query):
                     yield f"\x00IMAGE\x00{image_b64}"
                 except Exception as e:
                     print(f"Image RAG error: {e}")
-                    yield "⚠️ Sorry, I couldn't generate that image."
+                    yield "⚠️ Sorry, I couldn’t generate that image."
             return StreamingResponse(stream_image_rag(), media_type="text/plain")
 
         #  STEP 2c — Handle IMAGE (plain creative)
@@ -826,7 +826,7 @@ async def chat(query: Query):
                     yield f"\x00IMAGE\x00{image_b64}"
                 except Exception as e:
                     print(f"Image generation error: {e}")
-                    yield "⚠️ Sorry, I couldn't generate that image."
+                    yield "⚠️ Sorry, I couldn’t generate that image."
             return StreamingResponse(stream_image(), media_type="text/plain")
 
         #  STEP 2d — Handle DIAGRAM
@@ -841,7 +841,7 @@ async def chat(query: Query):
                     yield f"\x00DIAGRAM\x00{diagram_code}"
                 except Exception as e:
                     print(f"Diagram error: {e}")
-                    yield "⚠️ Sorry, I couldn't generate that diagram."
+                    yield "⚠️ Sorry, I couldn’t generate that diagram."
             return StreamingResponse(stream_diagram(), media_type="text/plain")
 
         #  STEP 2e — Handle CHART
@@ -857,7 +857,7 @@ async def chat(query: Query):
                     yield f"⚠️ {e}"
                 except Exception as e:
                     print(f"Chart error: {e}")
-                    yield "⚠️ Sorry, I couldn't generate that chart."
+                    yield "⚠️ Sorry, I couldn’t generate that chart."
             return StreamingResponse(stream_chart(), media_type="text/plain")
 
         #  STEP 2f — Handle TABLE
@@ -887,7 +887,7 @@ async def chat(query: Query):
                     yield f"\x00TABLE\x00{html}"
                 except Exception as e:
                     print(f"Table error: {e}")
-                    yield "⚠️ Sorry, I couldn't generate that table."
+                    yield "⚠️ Sorry, I couldn’t generate that table."
             return StreamingResponse(stream_table(), media_type="text/plain")
 
         #  STEP 2g — Handle TRANSLATE
@@ -902,7 +902,7 @@ async def chat(query: Query):
                             {
                                 "role": "system",
                                 "content": (
-                                    f"You are a professional translator. Translate the user's request into {target_lang}. "
+                                    f"You are a professional translator. Translate the user’s request into {target_lang}. "
                                     f"If document context is provided, translate or summarize the relevant content in {target_lang}. "
                                     "Output ONLY the translated text."
                                 )
@@ -916,10 +916,10 @@ async def chat(query: Query):
                             yield chunk.choices[0].delta.content
                 except Exception as e:
                     print(f"Translate error: {e}")
-                    yield "⚠️ Sorry, I couldn't translate that."
+                    yield "⚠️ Sorry, I couldn’t translate that."
             return StreamingResponse(stream_translate(), media_type="text/plain")
 
-        #  STEP 3 — Decide mode
+        #  STEP 3 — Decide mode (only GENERAL / RAG reach here)
         if intent == "GENERAL" or not context.strip():
             system_content = f"""
 You are SwooshAI, an elite Nike AI assistant.
@@ -947,11 +947,11 @@ A: Good morning! How can I help you today?
 Be conversational and concise.
 """
         else:
-            #  RAG MODE (UNCHANGED)
+            #  RAG MODE
             system_content = f"""
-You are SwooshAI, an elite Nike internal AI assistant specializing in 
+You are SwooshAI, an elite Nike internal AI assistant specializing in
 technical documentation, data engineering, and enterprise systems.
- 
+
 ═══════════════════════════════════════════
 CORE DIRECTIVES
 ═══════════════════════════════════════════
@@ -959,12 +959,12 @@ CORE DIRECTIVES
 2. NEVER hallucinate, assume, or infer beyond the context
 3. NEVER copy raw text — always synthesize and rephrase
 4. If information is not in context, respond ONLY with:
-   "I don't have that information in the current knowledge base."
- 
+   "I don’t have that information in the current knowledge base."
+
 ═══════════════════════════════════════════
 RESPONSE ARCHITECTURE (STRICTLY FOLLOW)
 ═══════════════════════════════════════════
- 
+
 ## Overview
 Provide a precise 2–3 sentence technical summary.
 Use domain-specific terminology where appropriate.
@@ -987,7 +987,7 @@ Use domain-specific terminology where appropriate.
 
 ## Key Takeaway
 One sentence — the most critical technical insight from the answer.
- 
+
 ═══════════════════════════════════════════
 TECHNICAL WRITING STANDARDS
 ═══════════════════════════════════════════
@@ -997,7 +997,7 @@ TECHNICAL WRITING STANDARDS
 - Keep sentences short and information-dense
 - Prioritize accuracy over completeness
 - Never pad responses with filler content
- 
+
 ═══════════════════════════════════════════
 CONTEXT
 ═══════════════════════════════════════════
@@ -1007,11 +1007,11 @@ CONTEXT
         def stream():
             try:
                 # STEP 4 — Adjust user prompt based on intent
-                user_prompt = (
-                    f"Give a structured answer with bullet points: {query.message}"
-                    if intent == "RAG" and context.strip()
-                    else f"Answer this clearly and conversationally: {query.message}"
-                )
+                # (IMAGE, IMAGE_RAG, DIAGRAM, CHART, TABLE, TRANSLATE all return early above)
+                if intent == "RAG" and context.strip():
+                    user_prompt = f"Answer using the exact response architecture defined in your instructions: {query.message}"
+                else:
+                    user_prompt = f"Answer this clearly and conversationally: {query.message}"
 
                 response = client.chat.completions.create(
                     model=CHAT_MODEL,
@@ -1019,7 +1019,8 @@ CONTEXT
                         {"role": "system", "content": system_content},
                         {"role": "user", "content": user_prompt}
                     ],
-                    stream=True
+                    stream=True,
+                    max_tokens=1000
                 )
 
                 for chunk in response:
