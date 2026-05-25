@@ -262,7 +262,8 @@ def bulk_index():
 
     try:
         container_client = blob_service.get_container_client(CONTAINER_NAME)
-        blobs = list(container_client.list_blobs())
+        all_blobs = list(container_client.list_blobs())
+        blobs = [b for b in all_blobs if not b.name.startswith("doc-images/")]
     except Exception as e:
         print(f"❌ Could not connect to Blob Storage: {e}")
         return
@@ -271,7 +272,7 @@ def bulk_index():
         print(f"⚠️  No files found in container: {CONTAINER_NAME}")
         return
 
-    print(f"Found {len(blobs)} files in blob container: {CONTAINER_NAME}")
+    print(f"Found {len(blobs)} document files to index (skipping doc-images/)")
 
     # Phase 1 — read and chunk all blobs (no API calls yet)
     all_chunks = []  # list of (doc_id, chunk_text, file_name)
