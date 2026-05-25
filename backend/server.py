@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -1092,13 +1092,10 @@ def trigger_create_index():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/bulk-index")
-def trigger_bulk_index():
-    """Indexes all files in the data folder into nike-index."""
-    try:
-        bulk_index()
-        return {"status": "Bulk indexing completed"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def trigger_bulk_index(background_tasks: BackgroundTasks):
+    """Starts bulk indexing in the background — returns immediately to avoid gateway timeout."""
+    background_tasks.add_task(bulk_index)
+    return {"status": "Bulk indexing started in background. Check backend logs for progress."}
     
 
 
