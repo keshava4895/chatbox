@@ -589,18 +589,48 @@ def list_blob_files() -> list:
 
 # ===================== CHART =====================
 
+def extract_chart_type(query: str) -> str:
+    """Parse the requested chart type directly from the user's prompt."""
+    q = query.lower()
+    if "pie" in q:
+        return "pie"
+    if "line" in q:
+        return "line"
+    if "horizontal bar" in q or "h-bar" in q:
+        return "barh"
+    return "bar"  # default
+
+
+def extract_search_topic(query: str) -> str:
+    """Strip chart-creation words so the search focuses on the document topic."""
+    strip_words = [
+        "create a", "generate a", "make a", "draw a", "show a", "plot a",
+        "pie chart", "bar chart", "line chart", "horizontal bar chart",
+        "chart", "graph", "from the data in the document", "from the document",
+        "from the data", "in the document",
+    ]
+    q = query.lower()
+    for w in strip_words:
+        q = q.replace(w, " ")
+    return " ".join(q.split()).strip() or query
+
+
 def generate_chart(query: str, context: str) -> str:
     """Ask GPT to extract chart data from context, render with matplotlib, return base64 PNG."""
+    chart_type = extract_chart_type(query)
+
     extraction = client.chat.completions.create(
         model=CHAT_MODEL,
         messages=[
             {
                 "role": "system",
                 "content": (
-                    "Extract chart data from the context. "
+                    f"Extract chart data from the context to create a {chart_type} chart. "
                     "Return ONLY valid JSON in this exact format:\n"
-                    '{"chart_type": "bar" or "pie", "title": "...", "labels": [...], "values": [...]}\n'
-                    "Use numbers only for values. If no numeric data exists, return {\"error\": \"no data\"}."
+                    f'{{"chart_type": "{chart_type}", "title": "...", "labels": [...], "values": [...]}}\n'
+                    "Use numbers only for values. "
+                    "If no numeric data exists, make reasonable estimates from any quantitative mentions. "
+                    "Only return {\"error\": \"no data\"} if there is truly no quantitative information at all."
                 )
             },
             {"role": "user", "content": f"Query: {query}\n\nContext:\n{context[:3000]}"}
@@ -615,12 +645,26 @@ def generate_chart(query: str, context: str) -> str:
         raise ValueError("No numeric data found in documents to generate a chart.")
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    if data.get("chart_type") == "pie":
-        ax.pie(data["values"], labels=data["labels"], autopct="%1.1f%%", startangle=140)
-        ax.set_title(data.get("title", "Chart"))
+    chart = data.get("chart_type", chart_type)
+    title = data.get("title", "Chart")
+    labels = data["labels"]
+    values = data["values"]
+
+    if chart == "pie":
+        ax.pie(values, labels=labels, autopct="%1.1f%%", startangle=140)
+        ax.set_title(title)
+    elif chart == "line":
+        ax.plot(labels, values, marker="o", color="#7C3AED", linewidth=2)
+        ax.set_title(title)
+        ax.set_ylabel("Value")
+        plt.xticks(rotation=30, ha="right")
+    elif chart == "barh":
+        ax.barh(labels, values, color="#7C3AED")
+        ax.set_title(title)
+        ax.set_xlabel("Value")
     else:
-        ax.bar(data["labels"], data["values"], color="#7C3AED")
-        ax.set_title(data.get("title", "Chart"))
+        ax.bar(labels, values, color="#7C3AED")
+        ax.set_title(title)
         ax.set_ylabel("Value")
         plt.xticks(rotation=30, ha="right")
 
@@ -710,57 +754,21 @@ def generate_diagram(query: str, context: str) -> str:
 
 _DIAGRAM_KEYWORDS = {"draw a diagram", "create a diagram", "flow diagram", "flowchart", "flow chart", "sequence diagram", "architecture diagram", "draw a flow", "create a flow", "draw the architecture", "show the architecture"}
 _IMAGE_KEYWORDS = {"generate an image", "create an image", "make an image", "draw an image", "show an image", "produce an image", "generate image", "create image", "draw a picture", "make a picture"}
-_CHART_KEYWORDS = {"create a chart", "generate a chart", "create a graph", "generate a graph", "make a chart", "make a graph", "bar chart", "pie chart", "visualize data", "chart the data", "plot the data"}
+_CHART_KEYWORDS = {"create a chart", "generate a chart", "create a graph", "generate a graph", "make a chart", "make a graph", "bar chart", "pie chart", "line chart", "visualize data", "chart the data", "plot the data"}
 _TABLE_KEYWORDS = {"in a table", "as a table", "summarize in a table", "table format", "show as table", "return a table", "html table"}
 _LIST_DOCS_KEYWORDS = {"what documents", "what files", "list documents", "list files", "which documents", "which files", "what have i uploaded", "documents do i have", "files do i have"}
 _TRANSLATE_KEYWORDS = {"translate", "in spanish", "in french", "in german", "in hindi", "in japanese", "in chinese", "in portuguese", "in arabic", "in italian"}
 
 def detect_intent(question: str) -> str:
+    """Keyword-only intent detection. Everything defaults to RAG — no LLM call, no GENERAL mode."""
     q = question.lower()
-
-    # Fast keyword shortcuts
-    if any(k in q for k in _LIST_DOCS_KEYWORDS):
-        return "LIST_DOCS"
-    if any(k in q for k in _DIAGRAM_KEYWORDS):
-        return "DIAGRAM"
-    if any(k in q for k in _CHART_KEYWORDS):
-        return "CHART"
-    if any(k in q for k in _TABLE_KEYWORDS):
-        return "TABLE"
-    if any(k in q for k in _TRANSLATE_KEYWORDS):
-        return "TRANSLATE"
-    if any(k in q for k in _IMAGE_KEYWORDS):
-        return "IMAGE_RAG"
-
-    response = client.chat.completions.create(
-        model=CHAT_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": """
-You are an intent classifier. Return ONLY one word — the FIRST matching category:
-
-1. LIST_DOCS  → user asks what files/documents are uploaded or available
-2. DIAGRAM    → user wants a flowchart, sequence diagram, or architecture diagram
-3. CHART      → user wants a bar chart, pie chart, or data visualization
-4. TABLE      → user wants output formatted as a table
-5. TRANSLATE  → user wants content translated to another language
-6. IMAGE_RAG  → user wants an image generated from document content
-7. RAG        → user wants a text answer from internal documents
-8. GENERAL    → greetings, capability questions, casual chat
-
-Respond with ONLY one word: LIST_DOCS, DIAGRAM, CHART, TABLE, TRANSLATE, IMAGE_RAG, RAG, or GENERAL
-"""
-            },
-            {"role": "user", "content": question}
-        ],
-        temperature=0
-    )
-
-    intent = response.choices[0].message.content.strip().upper()
-    if intent not in {"GENERAL", "RAG", "IMAGE", "IMAGE_RAG", "DIAGRAM", "CHART", "TABLE", "TRANSLATE", "LIST_DOCS"}:
-        intent = "RAG"
-    return intent
+    if any(k in q for k in _LIST_DOCS_KEYWORDS): return "LIST_DOCS"
+    if any(k in q for k in _DIAGRAM_KEYWORDS):   return "DIAGRAM"
+    if any(k in q for k in _CHART_KEYWORDS):      return "CHART"
+    if any(k in q for k in _TABLE_KEYWORDS):      return "TABLE"
+    if any(k in q for k in _TRANSLATE_KEYWORDS):  return "TRANSLATE"
+    if any(k in q for k in _IMAGE_KEYWORDS):      return "IMAGE_RAG"
+    return "RAG"
 
 
 @app.post("/chat")
@@ -773,8 +781,9 @@ async def chat(query: Query):
         context = ""
         sources = []
         confidence = 0
+        search_query = extract_search_topic(query.message) if intent == "CHART" else query.message
         if intent in ("RAG", "IMAGE_RAG", "DIAGRAM", "CHART", "TABLE", "TRANSLATE"):
-            results = search(query.message)
+            results = search(search_query)
             context = "\n\n".join(r["content"] for r in results)
             top_scores = [r.get("score", 0) for r in results[:3]]
             confidence = round(min(sum(top_scores) / len(top_scores), 1) * 100) if top_scores else 0
@@ -919,6 +928,14 @@ async def chat(query: Query):
                     yield "⚠️ Sorry, I couldn’t translate that."
             return StreamingResponse(stream_translate(), media_type="text/plain")
 
+        #  STEP 3 — RAG only. If no context found, inform the user.
+        if not context.strip():
+            def stream_rag_no_context():
+                yield "I couldn’t find relevant information in the uploaded documents for this query. Please make sure the relevant document has been uploaded, or try rephrasing your question."
+            return StreamingResponse(stream_rag_no_context(), media_type="text/plain")
+
+        system_content = f"""
+You are SwooshAI, an elite Nike internal AI assistant specializing in 
         #  STEP 3 — Decide mode (only GENERAL / RAG reach here)
         if intent == "GENERAL" or not context.strip():
             system_content = f"""
@@ -1006,6 +1023,8 @@ CONTEXT
 
         def stream():
             try:
+                # STEP 4 — Always RAG structured response
+                user_prompt = f"Give a structured answer with bullet points: {query.message}"
                 # STEP 4 — Adjust user prompt based on intent
                 # (IMAGE, IMAGE_RAG, DIAGRAM, CHART, TABLE, TRANSLATE all return early above)
                 if intent == "RAG" and context.strip():
@@ -1033,7 +1052,7 @@ CONTEXT
                 if sources:
                     yield f"\x00SOURCES\x00{json.dumps(sources)}"
 
-                if intent == "RAG" and context.strip():
+                if context.strip():
                     images = get_images_for_sources(sources)
                     if images:
                         yield f"\x00IMAGES\x00{json.dumps(images)}"
