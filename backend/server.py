@@ -11,6 +11,7 @@ import os
 import io
 import re
 import base64
+import time
 import fitz
 import matplotlib
 matplotlib.use("Agg")
@@ -255,10 +256,9 @@ def ensure_index_exists():
 def bulk_index():
     """
     Read all files directly from Azure Blob Storage,
-    chunk, embed with text-embedding-3-large, push to nike-index.
+    chunk, embed with text-embedding-3-large (batched to avoid rate limits), push to nike-index.
     """
     print("Starting bulk indexing from Azure Blob Storage...")
-    all_docs = []
 
     try:
         container_client = blob_service.get_container_client(CONTAINER_NAME)
@@ -273,9 +273,10 @@ def bulk_index():
 
     print(f"Found {len(blobs)} files in blob container: {CONTAINER_NAME}")
 
+    # Phase 1 — read and chunk all blobs (no API calls yet)
+    all_chunks = []  # list of (doc_id, chunk_text, file_name)
     for blob in blobs:
         print(f"  Reading: {blob.name}")
-
         try:
             blob_client = container_client.get_blob_client(blob.name)
             content = blob_client.download_blob().readall()
@@ -283,27 +284,42 @@ def bulk_index():
             print(f"  ❌ Could not read {blob.name}: {e}")
             continue
 
-        # Extract text based on file type
         text = read_file_bytes(blob.name, content)
-
         if not text.strip():
             print(f"  ⚠️  Skipping empty or unreadable file: {blob.name}")
             continue
 
         chunks = chunk_text(text)
-
         for i, chunk in enumerate(chunks):
-            # ✅ md5 hash — handles any filename with special characters
             doc_id = hashlib.md5(f"{blob.name}-{i}".encode()).hexdigest()
-            all_docs.append({
-                "id": doc_id,
-                "content": chunk,
-                "file_name": blob.name,
-                "contentVector": get_embedding(chunk)
-            })
+            all_chunks.append((doc_id, chunk, blob.name))
 
         print(f"  ✅ {blob.name}: {len(chunks)} chunks")
         extract_and_store_images(blob.name, content)
+
+    print(f"Total chunks to embed: {len(all_chunks)}")
+
+    # Phase 2 — embed in batches of 16 with a pause between batches
+    EMBED_BATCH = 16
+    all_docs = []
+    for batch_start in range(0, len(all_chunks), EMBED_BATCH):
+        batch = all_chunks[batch_start:batch_start + EMBED_BATCH]
+        texts = [c[1] for c in batch]
+        batch_num = batch_start // EMBED_BATCH + 1
+        try:
+            response = client.embeddings.create(model=EMBED_MODEL, input=texts)
+            vectors = [item.embedding for item in response.data]
+            for (doc_id, chunk, file_name), vector in zip(batch, vectors):
+                all_docs.append({
+                    "id": doc_id,
+                    "content": chunk,
+                    "file_name": file_name,
+                    "contentVector": vector
+                })
+            print(f"  Embedded batch {batch_num} ({len(batch)} chunks)")
+        except Exception as e:
+            print(f"  ❌ Embedding batch {batch_num} failed: {e} — skipping")
+        time.sleep(2)  # 2s pause between embedding batches to avoid 429
 
     print(f"Total chunks to index: {len(all_docs)}")
 
