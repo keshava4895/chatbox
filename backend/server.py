@@ -44,10 +44,6 @@ AZURE_OPENAI_KEY      = os.getenv("OPENAI_KEY")
 
 CHAT_MODEL            = os.getenv("CHAT_MODEL", "nike-gpt-4o")
 EMBED_MODEL           = os.getenv("EMBED_MODEL", "nike-text-embedding-3-large")  # ✅ 3-large deployment
-IMAGE_MODEL           = os.getenv("IMAGE_MODEL", "dall-e-3")
-IMAGE_ENDPOINT        = os.getenv("IMAGE_ENDPOINT")
-IMAGE_KEY             = os.getenv("IMAGE_KEY")
-
 API_VERSION           = "2024-12-01-preview"
 
 #3-large = 3072 dimensions
@@ -66,13 +62,6 @@ client = AzureOpenAI(
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
     api_version=API_VERSION
 )
-
-# Separate client for image generation (chatbox-image-gen resource, swedencentral)
-image_client = AzureOpenAI(
-    api_key=IMAGE_KEY,
-    azure_endpoint=IMAGE_ENDPOINT,
-    api_version="2025-04-01-preview"
-) if IMAGE_KEY and IMAGE_ENDPOINT else None
 
 blob_service = BlobServiceClient.from_connection_string(AZURE_BLOB_CONN)
 
@@ -703,44 +692,6 @@ def extract_target_language(query: str) -> str:
     return "Spanish"
 
 
-# ===================== IMAGE GENERATION =====================
-
-def build_image_prompt(query: str, context: str) -> str:
-    """Use GPT to craft a detailed DALL-E image prompt from query + document context."""
-    response = client.chat.completions.create(
-        model=CHAT_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are an expert at writing DALL-E image generation prompts. "
-                    "Based on the user's request and the document context, craft a vivid, specific, visual prompt. "
-                    "Focus on subject, style, lighting, and composition. "
-                    "Return ONLY the prompt text, no explanation, max 400 characters."
-                )
-            },
-            {"role": "user", "content": f"Request: {query}\n\nContext:\n{context[:2000]}"}
-        ],
-        temperature=0.7,
-        max_tokens=200
-    )
-    return response.choices[0].message.content.strip()
-
-
-def generate_image(prompt: str) -> str:
-    """Generate an image via the chatbox-image-gen resource. Returns base64 PNG string."""
-    if not image_client:
-        raise ValueError("Image generation is not configured. Set IMAGE_KEY and IMAGE_ENDPOINT in .env.")
-    response = image_client.images.generate(
-        model=IMAGE_MODEL,
-        prompt=prompt,
-        n=1,
-        size="1024x1024",
-        response_format="b64_json"
-    )
-    return response.data[0].b64_json
-
-
 # ===================== DIAGRAM =====================
 
 def generate_diagram(query: str, context: str) -> str:
@@ -770,7 +721,6 @@ def generate_diagram(query: str, context: str) -> str:
 # ===================== CHAT =====================
 
 _DIAGRAM_KEYWORDS = {"draw a diagram", "create a diagram", "flow diagram", "flowchart", "flow chart", "sequence diagram", "architecture diagram", "draw a flow", "create a flow", "draw the architecture", "show the architecture"}
-_IMAGE_KEYWORDS = {"generate an image", "create an image", "make an image", "draw an image", "show an image", "produce an image", "generate image", "create image", "draw a picture", "make a picture"}
 _CHART_KEYWORDS = {"create a chart", "generate a chart", "create a graph", "generate a graph", "make a chart", "make a graph", "bar chart", "pie chart", "line chart", "visualize data", "chart the data", "plot the data"}
 _TABLE_KEYWORDS = {"in a table", "as a table", "summarize in a table", "table format", "show as table", "return a table", "html table"}
 _LIST_DOCS_KEYWORDS = {"what documents", "what files", "list documents", "list files", "which documents", "which files", "what have i uploaded", "documents do i have", "files do i have"}
@@ -784,7 +734,6 @@ def detect_intent(question: str) -> str:
     if any(k in q for k in _CHART_KEYWORDS):      return "CHART"
     if any(k in q for k in _TABLE_KEYWORDS):      return "TABLE"
     if any(k in q for k in _TRANSLATE_KEYWORDS):  return "TRANSLATE"
-    if any(k in q for k in _IMAGE_KEYWORDS):      return "IMAGE_RAG"
     return "RAG"
 
 
@@ -799,7 +748,7 @@ async def chat(query: Query):
         sources = []
         confidence = 0
         search_query = extract_search_topic(query.message) if intent == "CHART" else query.message
-        if intent in ("RAG", "IMAGE_RAG", "DIAGRAM", "CHART", "TABLE", "TRANSLATE"):
+        if intent in ("RAG", "DIAGRAM", "CHART", "TABLE", "TRANSLATE"):
             results = search(search_query)
             context = "\n\n".join(r["content"] for r in results)
             top_scores = [r.get("score", 0) for r in results[:3]]
@@ -828,34 +777,7 @@ async def chat(query: Query):
                     yield "⚠️ Could not retrieve document list."
             return StreamingResponse(stream_list_docs(), media_type="text/plain")
 
-        #  STEP 2b — Handle IMAGE_RAG
-        if intent == "IMAGE_RAG":
-            def stream_image_rag():
-                try:
-                    if not context.strip():
-                        yield "⚠️ No relevant content found in the uploaded documents to base the image on."
-                        return
-                    image_prompt = build_image_prompt(query.message, context)
-                    print(f"Image prompt: {image_prompt}")
-                    image_b64 = generate_image(image_prompt)
-                    yield f"\x00IMAGE\x00{image_b64}"
-                except Exception as e:
-                    print(f"Image RAG error: {e}")
-                    yield "⚠️ Sorry, I couldn’t generate that image."
-            return StreamingResponse(stream_image_rag(), media_type="text/plain")
-
-        #  STEP 2c — Handle IMAGE (plain creative)
-        if intent == "IMAGE":
-            def stream_image():
-                try:
-                    image_b64 = generate_image(query.message)
-                    yield f"\x00IMAGE\x00{image_b64}"
-                except Exception as e:
-                    print(f"Image generation error: {e}")
-                    yield "⚠️ Sorry, I couldn’t generate that image."
-            return StreamingResponse(stream_image(), media_type="text/plain")
-
-        #  STEP 2d — Handle DIAGRAM
+        #  STEP 2b — Handle DIAGRAM
         if intent == "DIAGRAM":
             def stream_diagram():
                 try:
